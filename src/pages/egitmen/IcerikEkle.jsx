@@ -108,6 +108,7 @@ export default function IcerikEkle({ user }) {
   const [contentUrl, setContentUrl] =
     useState("");
 
+
   const [savingContent, setSavingContent] =
     useState(false);
 
@@ -234,6 +235,8 @@ export default function IcerikEkle({ user }) {
       );
     }
   };
+
+
 
   const handlePublishContent = async () => {
     if (!selectedCourse?.id) {
@@ -671,15 +674,15 @@ export default function IcerikEkle({ user }) {
                       </label>
 
                       <input
-                        value={contentUrl}
-                        onChange={(e) =>
-                          setContentUrl(
-                            e.target.value
-                          )
-                        }
-                        placeholder="Link yapıştır..."
-                        style={styles.input}
-                      />
+  value={contentUrl}
+  onChange={(e) => setContentUrl(e.target.value)}
+  placeholder={
+    selectedType === "video"
+      ? "Google Drive video linki yapıştır..."
+      : "PDF linki yapıştır..."
+  }
+  style={styles.input}
+/>
                     </>
                   )}
 
@@ -1019,7 +1022,43 @@ const styles = {
     letterSpacing: 1.4,
     marginBottom: 10,
   },
+  uploadBox: {
+  border: "2px dashed #CBD5E1",
+  borderRadius: 24,
+  padding: 30,
+  cursor: "pointer",
+  backgroundColor: "#F8FAFC",
+},
 
+uploadInner: {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 10,
+},
+
+uploadTitle: {
+  fontSize: 18,
+  fontWeight: 800,
+  color: DARK,
+},
+
+uploadDesc: {
+  fontSize: 13,
+  color: MUTED,
+},
+
+uploadSuccess: {
+  marginTop: 10,
+  backgroundColor: "#ECFDF5",
+  color: "#059669",
+  padding: "10px 16px",
+  borderRadius: 18,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  fontWeight: 700,
+},
   input: {
     width: "100%",
     minHeight: 64,

@@ -22,7 +22,10 @@ import {
   getAutoRules, addAutoRule, getLearningPaths, addLearningPath,
   assignTrainingToDepartment, assignTrainingToMultipleUsers,
   getSurveys, addSurvey, assignSurvey, getSurveyAssignments,
-  getAIPersonnelAnalysis // YENİ: Yapay Zeka API'si eklendi
+  getAIPersonnelAnalysis,
+  restartTrainingForUser,
+  sendAdminAnnouncement,
+getAdminAnnouncements,
 } from '../services/api';
 import { useNavigate } from "react-router-dom";
 
@@ -77,6 +80,9 @@ const AdminDashboard = ({ user }) => {
   const [trainingQuestions, setTrainingQuestions] = useState([]); 
   const [trainingAnalytics, setTrainingAnalytics] = useState(null); 
   const [loading, setLoading] = useState(true);
+  const [adminAnnouncementTarget, setAdminAnnouncementTarget] = useState("all");
+const [adminAnnouncementDept, setAdminAnnouncementDept] = useState("IT");
+const [adminAnnouncements, setAdminAnnouncements] = useState([]);
 
   const refreshData = async () => {
     setLoading(true);
@@ -129,6 +135,22 @@ const AdminDashboard = ({ user }) => {
       default: return <Coffee size={24} />;
     }
   };
+  const loadAdminAnnouncements = async () => {
+  if (!user?.id) return;
+
+  try {
+    const data = await getAdminAnnouncements(user.id);
+    setAdminAnnouncements(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.log("Yönetici duyuruları alınamadı:", err.message);
+    setAdminAnnouncements([]);
+  }
+};
+useEffect(() => {
+  if (user?.id) {
+    loadAdminAnnouncements();
+  }
+}, [user]);
 
   const getBadgeInfo = (xp) => {
     const safeXp = Number(xp) || 0;
@@ -201,13 +223,35 @@ const AdminDashboard = ({ user }) => {
   };
 
   const handleSendNotificationClick = async () => {
-    if(!notifTitle || !notifMessage) return alert("Lütfen başlık ve mesaj alanlarını doldurun!");
-    try {
-      await sendNotification({ target: notifTarget, title: notifTitle, message: notifMessage, type: 'duyuru' });
-      alert("Bildirim başarıyla iletildi! 🚀");
-      setNotifTitle(''); setNotifMessage('');
-    } catch(err) { alert("Hata: Bildirim gönderilemedi."); }
-  };
+  if (!notifTitle.trim() || !notifMessage.trim()) {
+    return alert("Lütfen başlık ve mesaj alanlarını doldurun!");
+  }
+
+  try {
+    const result = await sendAdminAnnouncement({
+      adminId: user?.id,
+      hedefKitle: adminAnnouncementTarget,
+      departman:
+        adminAnnouncementTarget === "department"
+          ? adminAnnouncementDept
+          : null,
+      baslik: notifTitle.trim(),
+      mesaj: notifMessage.trim(),
+    });
+
+    alert(
+      `Duyuru gönderildi. ${result.gonderilen_kisi_sayisi || 0} kişiye ulaştı. 🚀`
+    );
+
+    setNotifTitle("");
+    setNotifMessage("");
+
+    await loadAdminAnnouncements();
+  } catch (err) {
+    console.error("Duyuru gönderme hatası:", err);
+    alert(err.message || "Duyuru gönderilemedi.");
+  }
+};
 
   const handleSaveAutoRule = async (e) => {
     e.preventDefault();
@@ -1244,12 +1288,28 @@ const AdminDashboard = ({ user }) => {
               HEDEF KİTLE
             </label>
 
-            <select className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-black text-slate-900 outline-none focus:border-red-500 transition">
-              <option>Tüm Şirket</option>
-              <option>IT</option>
-              <option>İnsan Kaynakları</option>
-              <option>Satış</option>
-            </select>
+            <select
+  value={adminAnnouncementTarget}
+  onChange={(e) => setAdminAnnouncementTarget(e.target.value)}
+  className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-black text-slate-900 outline-none focus:border-red-500 transition"
+>
+  <option value="all">Tüm Şirket</option>
+  <option value="department">Departman</option>
+</select>
+
+{adminAnnouncementTarget === "department" && (
+  <select
+    value={adminAnnouncementDept}
+    onChange={(e) => setAdminAnnouncementDept(e.target.value)}
+    className="mt-4 w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-black text-slate-900 outline-none focus:border-red-500 transition"
+  >
+    <option value="IT">IT</option>
+    <option value="İnsan Kaynakları">İnsan Kaynakları</option>
+    <option value="Satış">Satış</option>
+    <option value="Pazarlama">Pazarlama</option>
+    <option value="Depo Lojistik">Depo Lojistik</option>
+  </select>
+)}
           </div>
 
           <div>
@@ -1270,11 +1330,13 @@ const AdminDashboard = ({ user }) => {
             BAŞLIK
           </label>
 
-          <input
-            type="text"
-            placeholder="Duyuru başlığını gir..."
-            className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-bold text-slate-900 outline-none focus:border-red-500 transition"
-          />
+         <input
+  type="text"
+  value={notifTitle}
+  onChange={(e) => setNotifTitle(e.target.value)}
+  placeholder="Duyuru başlığını gir."
+  className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-bold text-slate-900 outline-none focus:border-red-500 transition"
+/>
         </div>
 
         <div className="mb-8">
@@ -1282,11 +1344,13 @@ const AdminDashboard = ({ user }) => {
             MESAJ
           </label>
 
-          <textarea
-            rows={7}
-            placeholder="Duyuru mesajını yaz..."
-            className="w-full rounded-[2rem] border border-slate-200 bg-slate-50 p-5 font-semibold text-slate-700 outline-none resize-none focus:border-red-500 transition"
-          />
+         <textarea
+  rows={7}
+  value={notifMessage}
+  onChange={(e) => setNotifMessage(e.target.value)}
+  placeholder="Duyuru mesajını yaz."
+  className="w-full rounded-[2rem] border border-slate-200 bg-slate-50 p-5 font-semibold text-slate-700 outline-none resize-none focus:border-red-500 transition"
+/>
         </div>
 
         <div className="flex items-center justify-between gap-5">
@@ -1306,9 +1370,13 @@ const AdminDashboard = ({ user }) => {
             </div>
           </div>
 
-          <button className="flex-1 md:flex-none md:w-[280px] h-16 rounded-2xl bg-red-600 hover:bg-red-700 transition-all text-white font-black text-lg shadow-xl shadow-red-600/20">
-            Duyuruyu Gönder
-          </button>
+          <button
+  type="button"
+  onClick={handleSendNotificationClick}
+  className="flex-1 md:flex-none md:w-[280px] h-16 rounded-2xl bg-red-600 hover:bg-red-700 transition-all text-white font-black text-lg shadow-xl shadow-red-600/20"
+>
+  Duyuruyu Gönder
+</button>
         </div>
       </div>
 
@@ -1337,26 +1405,27 @@ const AdminDashboard = ({ user }) => {
           </p>
 
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-2xl p-4">
-              <p className="font-black text-slate-900">
-                Yeni Eğitim Yayında
-              </p>
+  {adminAnnouncements.length === 0 ? (
+    <p className="text-sm font-bold text-slate-400">
+      Henüz gönderilmiş duyuru yok.
+    </p>
+  ) : (
+    adminAnnouncements.slice(0, 5).map((item) => (
+      <div
+        key={item.id || item.duyuru_id}
+        className="bg-slate-50 rounded-2xl p-4"
+      >
+        <p className="font-black text-slate-900">
+          {item.baslik || item.title}
+        </p>
 
-              <p className="text-slate-400 text-sm font-semibold mt-1">
-                2 saat önce gönderildi
-              </p>
-            </div>
-
-            <div className="bg-slate-50 rounded-2xl p-4">
-              <p className="font-black text-slate-900">
-                Sistem Güncellemesi
-              </p>
-
-              <p className="text-slate-400 text-sm font-semibold mt-1">
-                Dün gönderildi
-              </p>
-            </div>
-          </div>
+        <p className="text-sm text-slate-400 mt-1">
+          {item.hedef_kitle || item.hedefKitle || "Duyuru"} · Gönderildi
+        </p>
+      </div>
+    ))
+  )}
+</div>
         </div>
       </div>
     </div>
@@ -1526,18 +1595,63 @@ const AdminDashboard = ({ user }) => {
                     <div className="flex items-center justify-between">
                       <p className="font-bold text-sm">{egitim.title}</p>
                       {!egitim.is_completed ? (
-                        <button onClick={async () => {
-                            if (egitim.is_assigned) await removeTrainingFromUser(selectedPersonnel.id, egitim.id);
-                            else await assignTrainingToUser(selectedPersonnel.id, egitim.id);
-                            setPersonnelTrainings(await getUserTrainingStatus(selectedPersonnel.id));
-                          }}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black ${egitim.is_assigned ? 'bg-red-50 text-red-600' : 'bg-slate-900 text-white'}`}
-                        >
-                          {egitim.is_assigned ? 'Geri Çek' : 'Ata'}
-                        </button>
-                      ) : (
-                        <span className="text-xs font-black text-emerald-600">Tamamlandı</span>
-                      )}
+  <button
+    onClick={async () => {
+      if (egitim.is_assigned) {
+        await removeTrainingFromUser(selectedPersonnel.id, egitim.id);
+      } else {
+        await assignTrainingToUser(selectedPersonnel.id, egitim.id);
+      }
+
+      setPersonnelTrainings(
+        await getUserTrainingStatus(selectedPersonnel.id)
+      );
+    }}
+    className={`px-3 py-1.5 rounded-xl text-xs font-black ${
+      egitim.is_assigned
+        ? "bg-red-50 text-red-600"
+        : "bg-slate-900 text-white"
+    }`}
+  >
+    {egitim.is_assigned ? "Geri Çek" : "Ata"}
+  </button>
+) : (
+  <div className="flex flex-col items-end gap-2">
+    <span className="text-xs font-black text-emerald-600">
+      Tamamlandı
+    </span>
+
+    <button
+      onClick={async () => {
+        const ok = window.confirm(
+          "Bu kullanıcı eğitimi baştan almak zorunda kalacak. Devam edilsin mi?"
+        );
+
+        if (!ok) return;
+
+        try {
+          await restartTrainingForUser({
+            userId: selectedPersonnel.id,
+            egitimId: egitim.id || egitim.egitim_id,
+            baslatanId: user.id,
+            neden: "IK/Yönetici tarafından eğitim yeniden başlatıldı.",
+          });
+
+          alert("Eğitim başarıyla yeniden başlatıldı.");
+
+          setPersonnelTrainings(
+            await getUserTrainingStatus(selectedPersonnel.id)
+          );
+        } catch (err) {
+          alert(err.message || "Eğitim yeniden başlatılamadı.");
+        }
+      }}
+      className="px-3 py-1.5 rounded-xl text-xs font-black bg-red-600 text-white hover:bg-red-700 transition"
+    >
+      Baştan Aldır
+    </button>
+  </div>
+)}
                     </div>
                   </div>
                 ))}

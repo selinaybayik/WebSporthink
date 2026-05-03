@@ -231,12 +231,13 @@ export default function LiderlikTablosu({ user, setUser }) {
             />
           ) : (
             <Leaderboard
-              leaders={leaders}
-              topThree={topThree}
-              restLeaders={restLeaders}
-              currentUser={currentUser}
-              authUser={user}
-            />
+  leaders={leaders}
+  topThree={topThree}
+  restLeaders={restLeaders}
+  currentUser={currentUser}
+  authUser={user}
+  onProfileClick={(id) => navigate(`/user/profil-onizleme/${id}`)}
+/>
           )}
         </section>
       </main>
@@ -244,7 +245,7 @@ export default function LiderlikTablosu({ user, setUser }) {
   );
 }
 
-function Leaderboard({ leaders, topThree, restLeaders, currentUser, authUser }) {
+function Leaderboard({ leaders, topThree, restLeaders, currentUser, authUser, onProfileClick }) {
   if (!leaders.length) {
     return (
       <div className="bg-white border border-slate-200 rounded-[2rem] p-10 text-center">
@@ -261,9 +262,9 @@ function Leaderboard({ leaders, topThree, restLeaders, currentUser, authUser }) 
   return (
     <>
       <div className="grid grid-cols-3 gap-6 mb-8">
-        <PodiumUser user={topThree[1]} place={2} />
-        <PodiumUser user={topThree[0]} place={1} />
-        <PodiumUser user={topThree[2]} place={3} />
+        <PodiumUser user={topThree[1]} place={2} onProfileClick={onProfileClick} />
+<PodiumUser user={topThree[0]} place={1} onProfileClick={onProfileClick} />
+<PodiumUser user={topThree[2]} place={3} onProfileClick={onProfileClick} />
       </div>
 
       <div className="grid grid-cols-3 gap-8">
@@ -273,40 +274,42 @@ function Leaderboard({ leaders, topThree, restLeaders, currentUser, authUser }) 
           </h2>
 
           <div className="space-y-3">
-            {restLeaders.map((item) => (
-              <div
-                key={item.id}
-                className={`flex items-center p-5 rounded-2xl border ${
-                  String(item.id) === String(authUser?.id)
-                    ? "bg-red-50 border-red-200"
-                    : "bg-white border-slate-100"
-                }`}
-              >
-                <div className="w-10 text-center font-black text-slate-400">
-                  #{item.rank}
-                </div>
+           {restLeaders.map((item) => (
+  <div
+    key={item.id}
+    onClick={() => onProfileClick(item.id)}
+    className={`flex items-center p-5 rounded-2xl border cursor-pointer hover:bg-slate-50 transition ${
+      String(item.id) === String(authUser?.id)
+        ? "bg-red-50 border-red-200"
+        : "bg-white border-slate-100"
+    }`}
+  >
+    <div className="w-10 text-center font-black text-slate-400">
+      #{item.rank}
+    </div>
 
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl mx-4">
-                  {item.avatar}
-                </div>
+    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl mx-4">
+      {item.avatar}
+    </div>
 
-                <div className="flex-1">
-                  <p className="font-black text-slate-950">{item.name}</p>
-                  <p className="text-slate-400 font-bold text-sm">
-                    {item.department}
-                  </p>
-                </div>
+    <div className="flex-1">
+      <p className="font-black text-slate-950">{item.name}</p>
 
-                <div className="flex items-center gap-2 text-emerald-500 mr-5">
-                  <ChevronUp size={18} />
-                  <span className="font-black text-xs">YÜKSELİŞ</span>
-                </div>
+      <p className="text-slate-400 font-bold text-sm">
+        {item.department}
+      </p>
+    </div>
 
-                <div className="bg-slate-100 px-4 py-2 rounded-2xl font-black text-slate-700">
-                  {item.xp} XP
-                </div>
-              </div>
-            ))}
+    <div className="flex items-center gap-2 text-emerald-500 mr-5">
+      <ChevronUp size={18} />
+      <span className="font-black text-xs">YÜKSELİŞ</span>
+    </div>
+
+    <div className="bg-slate-100 px-4 py-2 rounded-2xl font-black text-slate-700">
+      {item.xp} XP
+    </div>
+  </div>
+))}
           </div>
         </div>
 
@@ -339,17 +342,18 @@ function Leaderboard({ leaders, topThree, restLeaders, currentUser, authUser }) 
   );
 }
 
-function PodiumUser({ user, place }) {
+function PodiumUser({ user, place, onProfileClick }) {
   const isFirst = place === 1;
 
   return (
     <div
-      className={`relative rounded-[2rem] p-7 text-center border shadow-sm ${
-        isFirst
-          ? "bg-red-600 text-white border-red-600 scale-105"
-          : "bg-white text-slate-950 border-slate-200"
-      }`}
-    >
+  onClick={() => user?.id && onProfileClick(user.id)}
+  className={`relative rounded-[2rem] cursor-pointer hover:-translate-y-1 transition p-7 text-center border shadow-sm ${
+    isFirst
+      ? "bg-red-600 text-white border-red-600 scale-105"
+      : "bg-white text-slate-950 border-slate-200"
+  }`}
+>
       {isFirst && (
         <Crown
           size={36}

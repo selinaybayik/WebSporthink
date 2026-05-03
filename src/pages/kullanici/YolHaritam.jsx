@@ -188,11 +188,17 @@ export default function YolHaritam({ user, setUser }) {
                   <PanelTitle icon={Compass} title="Öğrenme Rotan" />
 
                   <button
-                    onClick={() => navigate("/user/egitimler")}
-                    className="px-4 py-2 bg-red-50 text-red-600 rounded-2xl font-black text-xs hover:bg-red-100 transition"
-                  >
-                    + KATALOG
-                  </button>
+  onClick={() =>
+    navigate("/user/egitimler", {
+      state: {
+        openSource: "Keşfet",
+      },
+    })
+  }
+  className="px-4 py-2 bg-red-50 text-red-600 rounded-2xl font-black text-xs hover:bg-red-100 transition"
+>
+  + KATALOG
+</button>
                 </div>
 
                 {yolAdimlari.length === 0 ? (

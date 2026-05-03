@@ -11,6 +11,7 @@ import EgitimDetay from "./pages/kullanici/EgitimDetay";
 import DersDetay from "./pages/kullanici/DersDetay";
 import YolHaritam from "./pages/kullanici/YolHaritam";
 import LiderlikTablosu from "./pages/kullanici/LiderlikTablosu";
+import UserProfilePreview from "./pages/kullanici/UserProfilePreview";
 import Rozetlerim from "./pages/kullanici/Rozetlerim";
 import Sorularim from "./pages/kullanici/Sorularim";
 import SoruDetay from "./pages/kullanici/SoruDetay";
@@ -168,6 +169,7 @@ function App() {
         <Route path="/user/ders-detay/:id/:moduleId" element={renderUserPage(DersDetay)} />
         <Route path="/user/yol-haritam" element={renderUserPage(YolHaritam)} />
         <Route path="/user/liderlik" element={renderUserPage(LiderlikTablosu)} />
+        <Route path="/user/profil-onizleme/:id" element={renderUserPage(UserProfilePreview)} />
         <Route path="/user/rozetler" element={renderUserPage(Rozetlerim)} />
         <Route path="/user/sorular" element={renderUserPage(Sorularim)} />
         <Route path="/user/soru-detay" element={renderUserPage(SoruDetay)} />

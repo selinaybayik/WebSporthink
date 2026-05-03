@@ -69,6 +69,17 @@ export default function EgitimDetay({ user, setUser }) {
         modules,
         resources: data.resources || [],
         quiz: data.quiz || null,
+        durum: data.durum,
+
+yenidenAtandi:
+  data.durum === "yeniden_atandi" ||
+  data.durum === "yeniden_baslatildi",
+
+sertifikaPasif:
+  data.sertifika_pasif_mi || false,
+
+quizResetlendi:
+  data.quiz_resetlendi_mi || false,
       });
     } catch (error) {
       console.log("Eğitim detay yükleme hatası:", error.message);
@@ -83,8 +94,14 @@ export default function EgitimDetay({ user, setUser }) {
   }, [training]);
 
   const nextModule = training?.modules?.find((m) => m.status === "active");
-  const quizUnlocked = Number(training?.progress || 0) === 100;
-  const certificateReady = quizUnlocked;
+  const firstModule =
+  training?.modules?.[0];
+  const quizUnlocked =
+  Number(training?.progress || 0) === 100 &&
+  !!training?.quiz;
+  const certificateReady =
+  Number(training?.progress || 0) === 100 &&
+  !training?.sertifikaPasif;
 
   const goToLesson = (moduleId) => {
     navigate(`/user/ders-detay/${training.id}/${moduleId}`);
@@ -203,7 +220,19 @@ export default function EgitimDetay({ user, setUser }) {
                     <p className="text-slate-500 font-semibold leading-7 max-w-2xl">
                       {training.description}
                     </p>
+                    
+                    {training.yenidenAtandi && (
+  <div className="mb-5 bg-red-50 border border-red-200 rounded-2xl p-5">
+    <p className="text-red-600 font-black text-xs tracking-widest mb-2">
+      YENİDEN ATANDI
+    </p>
 
+    <p className="text-slate-800 font-bold leading-7">
+      Bu eğitim yönetici/eğitmen tarafından tekrar atanmıştır.
+      Eğitimi yeniden tamamlamanız gerekmektedir.
+    </p>
+  </div>
+)}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-7">
                       <MiniInfo icon={Clock3} title="Tahmini Süre" value="30 dk" />
                       <MiniInfo
@@ -373,8 +402,18 @@ export default function EgitimDetay({ user, setUser }) {
 
                 <button
                   onClick={() => {
-                    if (nextModule) goToLesson(nextModule.id);
-                    else if (quizUnlocked) navigate(`/user/quiz/${training.id}`);
+                    if (training?.yenidenAtandi && firstModule) {
+  goToLesson(firstModule.id);
+}
+else if (nextModule) {
+  goToLesson(nextModule.id);
+}
+else if (quizUnlocked) {
+  navigate(`/user/quiz/${training.id}`);
+}
+else if (firstModule) {
+  goToLesson(firstModule.id);
+}
                   }}
                   className="w-full bg-red-600 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg shadow-red-600/25"
                 >
@@ -419,7 +458,7 @@ export default function EgitimDetay({ user, setUser }) {
                   Eğitmene Soru Sor
                 </button>
               </div>
-
+              {training.quiz && (
               <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm">
                 <div className="flex items-center gap-4 mb-5">
                   <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
@@ -455,7 +494,7 @@ export default function EgitimDetay({ user, setUser }) {
                     Quiz için tüm modülleri tamamlamalısın.
                   </p>
                 )}
-              </div>
+              </div>)}
 
               <div
                 className={`rounded-[2rem] p-6 border ${
@@ -488,7 +527,15 @@ export default function EgitimDetay({ user, setUser }) {
                     </div>
                   </div>
 
-                  {certificateReady && <ChevronRight className="text-amber-500" />}
+                  {certificateReady && (
+  <button
+    onClick={() =>
+      navigate("/user/sertifikalar")
+    }
+  >
+    <ChevronRight className="text-amber-500" />
+  </button>
+)}
                 </div>
               </div>
             </aside>

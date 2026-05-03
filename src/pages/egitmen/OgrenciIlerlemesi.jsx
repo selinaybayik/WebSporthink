@@ -23,6 +23,7 @@ import {
   getInstructorTrainingParticipants,
   getInstructorParticipantDetail,
   sendParticipantReminder,
+  restartTrainingForUser,
 } from "../../services/api";
 
 const RED = "#ED0015";
@@ -274,10 +275,12 @@ export default function OgrenciIlerlemesi({ user }) {
 
       {selectedParticipant && (
         <ParticipantModal
-          person={selectedParticipant}
-          onClose={() => setSelectedParticipant(null)}
-          onReminder={() => setReminderOpen(true)}
-        />
+  person={selectedParticipant}
+  egitimId={selectedEgitimId}
+  user={user}
+  onClose={() => setSelectedParticipant(null)}
+  onReminder={() => setReminderOpen(true)}
+/>
       )}
 
       {reminderOpen && (
@@ -292,7 +295,13 @@ export default function OgrenciIlerlemesi({ user }) {
   );
 }
 
-function ParticipantModal({ person, onClose, onReminder }) {
+function ParticipantModal({
+  person,
+  onClose,
+  onReminder,
+  egitimId,
+  user,
+}) {
   return (
     <div style={styles.modalOverlay}>
       <div style={styles.modalBox}>
@@ -308,6 +317,47 @@ function ParticipantModal({ person, onClose, onReminder }) {
         </div>
 
         <div style={styles.personalStats}>
+          <div style={{ marginTop: 20 }}>
+  <button
+    style={{
+      width: "100%",
+      background: "#DC2626",
+      color: "#fff",
+      border: "none",
+      padding: "14px",
+      borderRadius: 14,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontSize: 15,
+    }}
+    onClick={async () => {
+      const ok = window.confirm(
+        "Bu kullanıcı eğitimi baştan almak zorunda kalacak. Devam edilsin mi?"
+      );
+
+      if (!ok) return;
+
+      try {
+        await restartTrainingForUser({
+          userId: person.id,
+          egitimId,
+          baslatanId: user?.id,
+          neden: "Eğitmen tarafından eğitim yeniden başlatıldı.",
+        });
+
+        window.alert("Eğitim başarıyla yeniden başlatıldı.");
+
+        onClose();
+      } catch (err) {
+        window.alert(
+          err.message || "Eğitim yeniden başlatılamadı."
+        );
+      }
+    }}
+  >
+    Eğitimi Baştan Aldır
+  </button>
+</div>
           <PersonalStat value={`%${person.progress || 0}`} label="İLERLEME" />
           <PersonalStat value={person.quiz > 0 ? person.quiz : "-"} label="QUIZ SKORU" />
           <PersonalStat

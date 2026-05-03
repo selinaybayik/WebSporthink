@@ -103,13 +103,7 @@ export default function EgitmenDuyuruMerkezi({ user }) {
               onClick={() => setHedefKitle("my_students")}
             />
 
-            <TargetButton
-              active={hedefKitle === "department"}
-              icon={Building2}
-              title="Departmanım"
-              text="Aynı departmandaki kişiler"
-              onClick={() => setHedefKitle("department")}
-            />
+            
 
             <TargetButton
               active={hedefKitle === "all"}
@@ -187,10 +181,8 @@ export default function EgitmenDuyuruMerkezi({ user }) {
                   <CheckCircle2 size={14} color="#10B981" />
                   <span>
                     {hedefKitle === "my_students"
-                      ? "Benim Öğrencilerim"
-                      : hedefKitle === "department"
-                      ? "Departmanım"
-                      : "Tüm Şirket"}
+  ? "Benim Öğrencilerim"
+  : "Tüm Şirket"}
                   </span>
                 </div>
               </div>
@@ -353,7 +345,7 @@ const styles = {
   },
   targetGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateColumns: "repeat(2, 1fr)",
     gap: 14,
     marginBottom: 18,
   },

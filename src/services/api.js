@@ -474,6 +474,16 @@ export const getLiderlik = async () => {
   return data;
 };
 
+export const getPublicUserProfile = async (userId) => {
+  const response = await fetch(`${BASE_URL}/api/user/public/${userId}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Kullanıcı profili alınamadı.");
+  }
+
+  return data;
+};
 export const getOduller = async () => {
   const response = await fetch(`${BASE_URL}/api/oduller`);
   const data = await response.json();
@@ -631,7 +641,8 @@ export const updatePassword = async (userId, currentPassword, newPassword) => {
   }
 
   return data;
-};export const getPersonalAnalysis = async (userId) => {
+};
+export const getPersonalAnalysis = async (userId) => {
   const response = await fetch(
     `${BASE_URL}/api/kisisel-analiz/${userId}`
   );
@@ -920,25 +931,25 @@ export const createVideoContent = async (payload) => {
 };
 
 export const createPdfContent = async (payload) => {
-  const response = await fetch(
-    `${BASE_URL}/api/egitmen/icerik/pdf`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
-  );
+  const response = await fetch(`${BASE_URL}/api/icerik/pdf`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || "PDF içeriği eklenemedi.");
+    throw new Error(data.message || "PDF içerik eklenemedi.");
   }
 
   return data;
 };
+
+
+
 export const getInstructorTrainingDetail = async (egitimId) => {
   const response = await fetch(`${BASE_URL}/api/egitmen/egitim/${egitimId}`);
 
@@ -1315,6 +1326,71 @@ export const assignInstructorSurvey = async ({
 
   if (!response.ok || data.success === false) {
     throw new Error(data.message || "Anket atanamadı.");
+  }
+
+  return data;
+};
+export const restartTrainingForUser = async ({
+  userId,
+  egitimId,
+  baslatanId,
+  neden,
+}) => {
+  const response = await fetch(`${BASE_URL}/api/egitim-yeniden-baslat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+      egitimId,
+      baslatanId,
+      neden,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Eğitim yeniden başlatılamadı.");
+  }
+
+  return data;
+};
+export const sendAdminAnnouncement = async ({
+  adminId,
+  hedefKitle,
+  departman,
+  baslik,
+  mesaj,
+}) => {
+  const response = await fetch(`${BASE_URL}/api/admin/duyuru-gonder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      adminId,
+      hedefKitle,
+      departman,
+      baslik,
+      mesaj,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.success === false) {
+    throw new Error(data.message || "Duyuru gönderilemedi.");
+  }
+
+  return data;
+};
+
+export const getAdminAnnouncements = async (adminId) => {
+  const response = await fetch(`${BASE_URL}/api/admin/duyurular/${adminId}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Yönetici duyuruları alınamadı.");
   }
 
   return data;

@@ -45,8 +45,16 @@ export default function Sertifikalarim({ user, setUser }) {
     }
   };
  
-  const filtered = certificates.filter((c) =>
-    (c.title || "").toLowerCase().includes(search.toLowerCase())
+  const filtered = certificates
+  .filter(
+    (c) =>
+      !c.sertifika_pasif_mi &&
+      c.aktif_mi !== false
+  )
+  .filter((c) =>
+    (c.title || "")
+      .toLowerCase()
+      .includes(search.toLowerCase())
   );
  
   const handlePrint = () => {
@@ -105,7 +113,7 @@ export default function Sertifikalarim({ user, setUser }) {
           <StatCard
             icon={Trophy}
             label="Toplam Sertifika"
-            value={certificates.length}
+            value={filtered.length}
             color="amber"
           />
           <StatCard
@@ -125,7 +133,7 @@ export default function Sertifikalarim({ user, setUser }) {
           <StatCard
             icon={ShieldCheck}
             label="Doğrulanmış"
-            value={certificates.length}
+            value={filtered.length}
             color="emerald"
           />
         </div>

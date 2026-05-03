@@ -14,7 +14,8 @@ import {
   getCertificates, getPerformanceDetails, getAllTrainings,
   sendNotification, assignTrainingToDepartment, assignTrainingToMultipleUsers,
   getQuizQuestions, getTrainingAnalytics, updateTrainingDescription, addTraining, addQuizQuestion,
-  getAIPersonnelAnalysis // YENİ: Yapay Zeka API'si
+  getAIPersonnelAnalysis,
+restartTrainingForUser,
 } from '../services/api';
 
 const DeptManagerDashboard = ({ user }) => {
@@ -775,13 +776,69 @@ const DeptManagerDashboard = ({ user }) => {
                                     {egitim.is_assigned ? 'Geri Çek' : 'Ata'}
                                   </button>
                                 ) : (
-                                  <button 
-                                    onClick={() => togglePerformanceDetails(selectedPersonnel.id, egitim.id)}
-                                    className="flex items-center gap-1 px-3 py-2 bg-sky-50 text-sky-600 rounded-xl text-xs font-bold hover:bg-sky-100"
-                                  >
-                                    <BarChart2 size={14} /> Analiz
-                                  </button>
-                                )}
+  <div className="flex flex-col gap-2">
+    
+    <button 
+      onClick={() =>
+        togglePerformanceDetails(
+          selectedPersonnel.id,
+          egitim.id
+        )
+      }
+      className="flex items-center justify-center gap-1 px-3 py-2 bg-sky-50 text-sky-600 rounded-xl text-xs font-bold hover:bg-sky-100"
+    >
+      <BarChart2 size={14} />
+      Analiz
+    </button>
+
+    <button
+      onClick={async () => {
+        const ok = window.confirm(
+          "Bu kullanıcı eğitimi baştan almak zorunda kalacak. Devam edilsin mi?"
+        );
+
+        if (!ok) return;
+
+        try {
+          await restartTrainingForUser({
+            userId: selectedPersonnel.id,
+
+            egitimId:
+              egitim.id ||
+              egitim.egitim_id,
+
+            baslatanId: user.id,
+
+            neden:
+              "Departman yöneticisi tarafından eğitim yeniden başlatıldı.",
+          });
+
+          alert(
+            "Eğitim başarıyla yeniden başlatıldı."
+          );
+
+          const updated =
+            await getUserTrainingStatus(
+              selectedPersonnel.id
+            );
+
+          setPersonnelTrainings(updated);
+
+          refreshData();
+        } catch (err) {
+          alert(
+            err.message ||
+              "Eğitim yeniden başlatılamadı."
+          );
+        }
+      }}
+      className="px-3 py-2 rounded-xl text-xs font-black bg-red-600 text-white hover:bg-red-700 transition-all"
+    >
+      Baştan Aldır
+    </button>
+
+  </div>
+)}
                              </div>
 
                              {expandedPerformance[egitim.id] && (

@@ -117,10 +117,33 @@ export default function KullaniciAnaSayfa({ user, setUser }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          <StatCard icon={Medal} title="Toplam XP" value={level.xp || 0} note="↗ 12% bu hafta" color="red" />
-          <StatCard icon={Coins} title="Coin" value={level.coin || 0} note="↗ 8% bu hafta" color="amber" />
-          <StatCard icon={Trophy} title="Tamamlanma" value={`%${stats.completionRate || 0}`} note="↗ 5% bu hafta" color="emerald" />
-          <StatCard icon={BookOpen} title="Aktif Eğitim" value={stats.activeTrainings || 0} note="Değişiklik yok" color="blue" />
+          <StatCard
+  icon={Medal}
+  title="Toplam XP"
+  value={level.xp || 0}
+  color="red"
+/>
+
+<StatCard
+  icon={Coins}
+  title="Coin"
+  value={level.coin || 0}
+  color="amber"
+/>
+
+<StatCard
+  icon={Trophy}
+  title="Tamamlanma"
+  value={`%${stats.completionRate || 0}`}
+  color="emerald"
+/>
+
+<StatCard
+  icon={BookOpen}
+  title="Aktif Eğitim"
+  value={stats.activeTrainings || 0}
+  color="blue"
+/>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -303,8 +326,7 @@ export default function KullaniciAnaSayfa({ user, setUser }) {
     </KullaniciLayout>
   );
 }
-
-function StatCard({ icon: Icon, title, value, note, color }) {
+function StatCard({ icon: Icon, title, value, color }) {
   const styles = {
     red: "bg-red-50 text-red-600",
     amber: "bg-amber-50 text-amber-600",
@@ -324,7 +346,6 @@ function StatCard({ icon: Icon, title, value, note, color }) {
             {title.toUpperCase()}
           </p>
           <h3 className="text-3xl font-black text-slate-950 mt-2">{value}</h3>
-          <p className="text-emerald-500 text-sm font-bold mt-2">{note}</p>
         </div>
       </div>
     </div>

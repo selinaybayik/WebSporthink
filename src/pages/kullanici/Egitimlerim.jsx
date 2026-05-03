@@ -28,7 +28,7 @@ import {
   Filter,
   Target,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   getTrainings,
@@ -40,6 +40,7 @@ import {
 
 export default function Egitimlerim({ user, setUser }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [activeTab, setActiveTab] = useState("Devam Edenler");
   const [activeSource, setActiveSource] = useState("Atananlar");
@@ -66,6 +67,12 @@ export default function Egitimlerim({ user, setUser }) {
   useEffect(() => {
     loadTrainings();
   }, [user?.id]);
+  useEffect(() => {
+  if (location.state?.openSource === "Keşfet") {
+    setActiveSource("Keşfet");
+    setActiveTab("Tüm Eğitimler");
+  }
+}, [location.state]);
 
   const loadTrainings = async () => {
     if (!user?.id) return;
@@ -86,14 +93,30 @@ export default function Egitimlerim({ user, setUser }) {
         title: item.title || "İsimsiz Eğitim",
         category: item.category || "Genel",
         assignmentType: item.assignment_type || "Yönetici Atadı",
-        progress: item.is_completed ? 100 : 0,
+        progress: item.is_completed
+  ? 100
+  : Number(item.progress || 0),
         duration: item.duration || "0 dk",
         xp: Number(item.xp) || 0,
-        status: item.is_completed ? "completed" : "continuing",
+        status:
+  item.durum === "yeniden_atandi" ||
+  item.durum === "yeniden_baslatildi"
+    ? "reassigned"
+    : item.is_completed
+    ? "completed"
+    : "continuing",
         mandatory: item.assignment_type === "Yönetici Atadı",
         isStarted: true,
         source: "assigned",
         instructor: item.instructor || "Sporthink Akademi",
+        durum: item.durum,
+
+isReassigned:
+  item.durum === "yeniden_atandi" ||
+  item.durum === "yeniden_baslatildi",
+
+yenidenAtamaNo:
+  item.yeniden_atama_no || 0,
       }));
 
       const mappedCatalog = (catalogTrainings || [])
@@ -151,10 +174,13 @@ export default function Egitimlerim({ user, setUser }) {
     }
 
     if (activeTab === "Devam Edenler") {
-      data = data.filter(
-        (item) => item.status === "continuing" || item.status === "new"
-      );
-    }
+  data = data.filter(
+    (item) =>
+      item.status === "continuing" ||
+      item.status === "new" ||
+      item.status === "reassigned"
+  );
+}
 
     if (activeTab === "Tamamlananlar") {
       data = data.filter((item) => item.status === "completed");
@@ -429,6 +455,8 @@ function SourceButton({ active, icon: Icon, label, count, onClick }) {
 function TrainingRow({ item, onClick }) {
   const isCompleted = item.status === "completed";
   const isNew = item.status === "new";
+  const isReassigned =
+  item.status === "reassigned";
 
   return (
     <tr className="group border-b border-slate-100 hover:bg-slate-50/70 transition">
@@ -496,13 +524,21 @@ function TrainingRow({ item, onClick }) {
           onClick={onClick}
           className={`h-12 px-7 rounded-2xl inline-flex items-center gap-2 font-black text-sm transition group-hover:scale-[1.02] ${
             isCompleted
-              ? "bg-slate-100 text-slate-500"
+  ? "bg-slate-100 text-slate-500"
+  : isReassigned
+  ? "bg-red-600 text-white shadow-xl shadow-red-600/25"
               : isNew
               ? "bg-slate-950 text-white"
               : "bg-red-600 text-white shadow-xl shadow-red-600/25"
           }`}
         >
-          {isCompleted ? "YENİDEN İZLE" : isNew ? "LİSTEME EKLE" : "BAŞLA"}
+          {isCompleted
+  ? "YENİDEN İZLE"
+  : isReassigned
+  ? "TEKRAR BAŞLA"
+  : isNew
+  ? "LİSTEME EKLE"
+  : "BAŞLA"}
           <ChevronRight size={18} />
         </button>
       </td>
