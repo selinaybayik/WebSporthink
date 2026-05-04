@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import {
   Megaphone,
   Send,
-  Users,
-  Building2,
   GraduationCap,
   BellRing,
   Sparkles,
@@ -11,6 +9,7 @@ import {
   MessageSquareText,
 } from "lucide-react";
 import { sendInstructorAnnouncement } from "../../services/api";
+import { useNavigate } from "react-router-dom";
 
 const RED = "#E30613";
 const DARK = "#081229";
@@ -19,6 +18,7 @@ const BG = "#F4F5F7";
 
 export default function EgitmenDuyuruMerkezi({ user }) {
   const [hedefKitle, setHedefKitle] = useState("my_students");
+  const navigate = useNavigate();
   const [baslik, setBaslik] = useState("");
   const [mesaj, setMesaj] = useState("");
   const [loading, setLoading] = useState(false);
@@ -65,17 +65,23 @@ export default function EgitmenDuyuruMerkezi({ user }) {
             <p style={styles.pageMini}>EĞİTMEN PANELİ</p>
             <h1 style={styles.title}>Duyuru Merkezi</h1>
             <p style={styles.subtitle}>
-              Öğrencilerine, departmanına veya tüm şirkete hızlı duyuru gönder.
+             Öğrencilerine hızlı duyuru ve bilgilendirme mesajları gönder.
             </p>
           </div>
         </div>
 
         <div style={styles.heroBadge}>
-          <BellRing size={22} color={RED} />
-          <div>
-            <strong>Anlık Bildirim</strong>
-            <span>Kullanıcılara duyuru olarak düşer</span>
-          </div>
+         <button
+  type="button"
+  style={styles.heroBadge}
+  onClick={() => navigate("/egitmen/gecmis-duyurular")}
+>
+  <BellRing size={22} color={RED} />
+  <div>
+    <strong>Geçmiş Duyurular</strong>
+    <span>Gönderdiğin duyuruları görüntüle</span>
+  </div>
+</button>
         </div>
       </section>
 
@@ -103,15 +109,7 @@ export default function EgitmenDuyuruMerkezi({ user }) {
               onClick={() => setHedefKitle("my_students")}
             />
 
-            
-
-            <TargetButton
-              active={hedefKitle === "all"}
-              icon={Users}
-              title="Tüm Şirket"
-              text="Tüm kullanıcılar"
-              onClick={() => setHedefKitle("all")}
-            />
+          
           </div>
 
           <div style={styles.formGrid}>
@@ -180,9 +178,7 @@ export default function EgitmenDuyuruMerkezi({ user }) {
                 <div style={styles.notificationFooter}>
                   <CheckCircle2 size={14} color="#10B981" />
                   <span>
-                    {hedefKitle === "my_students"
-  ? "Benim Öğrencilerim"
-  : "Tüm Şirket"}
+                    Benim Öğrencilerim
                   </span>
                 </div>
               </div>
@@ -292,6 +288,8 @@ const styles = {
     alignItems: "center",
     gap: 12,
     minWidth: 260,
+    cursor: "pointer",
+border: "1px solid #FFE4E6",
   },
 
   contentGrid: {
@@ -345,7 +343,7 @@ const styles = {
   },
   targetGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
+    gridTemplateColumns: "1fr",
     gap: 14,
     marginBottom: 18,
   },

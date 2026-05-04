@@ -7,7 +7,8 @@ import {
   Building2, Flame, Shield, Activity, ArrowLeft,
   Medal, Star, BarChart2, Video, CheckSquare, HelpCircle,
   Megaphone, Send, Edit3, Save, Workflow, Route, Layers,
-  ClipboardList, Target, Bot // YENİ: Bot ikonu eklendi (Faz 3 AI)
+  ClipboardList, Target, Bot, Calendar,  PieChart,
+  BarChart3,
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
@@ -26,6 +27,9 @@ import {
   restartTrainingForUser,
   sendAdminAnnouncement,
 getAdminAnnouncements,
+getAdminProfile,
+updateAdminProfile,
+updateAdminPassword,
 } from '../services/api';
 import { useNavigate } from "react-router-dom";
 
@@ -34,6 +38,7 @@ const AdminDashboard = ({ user }) => {
   const [activeTab, setActiveTab] = useState('overview'); 
   const [isModalOpen, setIsModalOpen] = useState(false); 
   const [isQuizModalOpen, setIsQuizModalOpen] = useState(false); 
+  
   
   const [selectedPersonnel, setSelectedPersonnel] = useState(null); 
   const [selectedDepartment, setSelectedDepartment] = useState(null);
@@ -58,9 +63,22 @@ const AdminDashboard = ({ user }) => {
   const [learningPaths, setLearningPaths] = useState([]);
   const [pathName, setPathName] = useState('');
   const [selectedTrainingsForPath, setSelectedTrainingsForPath] = useState([]); 
+  const [adminProfile, setAdminProfile] = useState(null);
+const [profileForm, setProfileForm] = useState({
+  ad: "",
+  soyad: "",
+  email: "",
+  departman: "",
+});
+
+const [passwordForm, setPasswordForm] = useState({
+  yeniSifre: "",
+  yeniSifreTekrar: "",
+});
 
   const [surveys, setSurveys] = useState([]);
   const [surveyAssignments, setSurveyAssignments] = useState([]);
+  const [selectedSurveyAnalysis, setSelectedSurveyAnalysis] = useState(null);
   const [newSurveyTitle, setNewSurveyTitle] = useState('');
   const [newSurveyQuestions, setNewSurveyQuestions] = useState(['', '', '']); 
 
@@ -83,6 +101,8 @@ const AdminDashboard = ({ user }) => {
   const [adminAnnouncementTarget, setAdminAnnouncementTarget] = useState("all");
 const [adminAnnouncementDept, setAdminAnnouncementDept] = useState("IT");
 const [adminAnnouncements, setAdminAnnouncements] = useState([]);
+const [announcementSearch, setAnnouncementSearch] = useState("");
+const [showAnnouncementHistory, setShowAnnouncementHistory] = useState(false);
 
   const refreshData = async () => {
     setLoading(true);
@@ -127,6 +147,53 @@ const [adminAnnouncements, setAdminAnnouncements] = useState([]);
 
   const handleLogout = () => window.location.reload();
 
+  const loadAdminProfile = async () => {
+  if (!user?.id) return;
+
+  try {
+    const data = await getAdminProfile(user.id);
+
+    setAdminProfile(data);
+    setProfileForm({
+      ad: data.ad || "",
+      soyad: data.soyad || "",
+      email: data.email || "",
+      departman: data.departman || "",
+    });
+  } catch (err) {
+    alert(err.message || "Profil bilgisi alınamadı.");
+  }
+};
+
+const handleUpdateAdminProfile = async (e) => {
+  e.preventDefault();
+
+  try {
+    const data = await updateAdminProfile(user.id, profileForm);
+
+    alert(data.message || "Profil güncellendi.");
+    loadAdminProfile();
+  } catch (err) {
+    alert(err.message || "Profil güncellenemedi.");
+  }
+};
+
+const handleUpdateAdminPassword = async (e) => {
+  e.preventDefault();
+
+  try {
+    const data = await updateAdminPassword(user.id, passwordForm);
+
+    alert(data.message || "Şifre güncellendi.");
+    setPasswordForm({
+      yeniSifre: "",
+      yeniSifreTekrar: "",
+    });
+  } catch (err) {
+    alert(err.message || "Şifre güncellenemedi.");
+  }
+};
+
   const getRewardIcon = (iconName) => {
     switch (iconName) {
       case 'beach': return <Map size={24} />;
@@ -135,22 +202,30 @@ const [adminAnnouncements, setAdminAnnouncements] = useState([]);
       default: return <Coffee size={24} />;
     }
   };
-  const loadAdminAnnouncements = async () => {
+ const loadAdminAnnouncements = async () => {
   if (!user?.id) return;
 
   try {
     const data = await getAdminAnnouncements(user.id);
-    setAdminAnnouncements(Array.isArray(data) ? data : []);
+
+    console.log("YÖNETİCİ DUYURU RESPONSE:", data);
+
+    const list = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.duyurular)
+      ? data.duyurular
+      : Array.isArray(data?.announcements)
+      ? data.announcements
+      : Array.isArray(data?.data)
+      ? data.data
+      : [];
+
+    setAdminAnnouncements(list);
   } catch (err) {
-    console.log("Yönetici duyuruları alınamadı:", err.message);
+    console.log("Yönetici duyuruları alınamadı:", err);
     setAdminAnnouncements([]);
   }
 };
-useEffect(() => {
-  if (user?.id) {
-    loadAdminAnnouncements();
-  }
-}, [user]);
 
   const getBadgeInfo = (xp) => {
     const safeXp = Number(xp) || 0;
@@ -246,7 +321,9 @@ useEffect(() => {
     setNotifTitle("");
     setNotifMessage("");
 
-    await loadAdminAnnouncements();
+    setTimeout(() => {
+  loadAdminAnnouncements();
+}, 500);
   } catch (err) {
     console.error("Duyuru gönderme hatası:", err);
     alert(err.message || "Duyuru gönderilemedi.");
@@ -335,10 +412,62 @@ useEffect(() => {
     return { name: dept, count: deptUsers.length, avgCompletion, totalXP };
   }).filter(Boolean).sort((a, b) => b.avgCompletion - a.avgCompletion);
 
+  const surveyStats = {
+  totalSurveys: surveys.length,
+  totalAssignments: surveyAssignments.length,
+  completedAssignments: surveyAssignments.filter(
+    (a) =>
+      a.durum === "tamamlandi" ||
+      a.durum === "Tamamlandı" ||
+      a.durum === "completed"
+  ).length,
+};
+
+const surveyCompletionRate =
+  surveyStats.totalAssignments > 0
+    ? Math.round(
+        (surveyStats.completedAssignments / surveyStats.totalAssignments) * 100
+      )
+    : 0;
+
+const selectedSurveyAssignments = selectedSurveyAnalysis
+  ? surveyAssignments.filter(
+      (a) =>
+        String(a.anket_id) === String(selectedSurveyAnalysis.anket_id) ||
+        String(a.anket_id) === String(selectedSurveyAnalysis.id)
+    )
+  : [];
+
+const selectedSurveyCompleted = selectedSurveyAssignments.filter(
+  (a) =>
+    a.durum === "tamamlandi" ||
+    a.durum === "Tamamlandı" ||
+    a.durum === "completed"
+).length;
+
+const selectedSurveyRate =
+  selectedSurveyAssignments.length > 0
+    ? Math.round(
+        (selectedSurveyCompleted / selectedSurveyAssignments.length) * 100
+      )
+    : 0;
+
   const filteredUsers = Array.isArray(users) ? users.filter(person => 
     `${person.ad} ${person.soyad}`.toLowerCase().includes(personnelSearch.toLowerCase()) ||
     person.departman.toLowerCase().includes(personnelSearch.toLowerCase())
   ) : [];
+  const filteredAdminAnnouncements = Array.isArray(adminAnnouncements)
+  ? adminAnnouncements.filter((item) => {
+      const key = announcementSearch.trim().toLowerCase();
+
+      return (
+        key.length === 0 ||
+        String(item.baslik || "").toLowerCase().includes(key) ||
+        String(item.mesaj || item.icerik || "").toLowerCase().includes(key) ||
+        String(item.departman || "").toLowerCase().includes(key)
+      );
+    })
+  : [];
 
   const handleSelectUser = (id, e) => {
     e.stopPropagation();
@@ -381,57 +510,217 @@ useEffect(() => {
       
       {/* SIDEBAR */}
       <aside className="w-72 bg-slate-900 text-white flex flex-col shadow-2xl z-20">
-        <div className="h-20 flex items-center px-8 border-b border-slate-800">
-          <div className="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl mr-3 shadow-lg">S</div>
-          <span className="text-xl font-black tracking-tighter uppercase italic">Sporthink</span>
-        </div>
+  <div className="h-20 flex items-center px-8 border-b border-slate-800">
+    <div className="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl mr-3 shadow-lg">
+      S
+    </div>
+    <span className="text-xl font-black tracking-tighter uppercase italic">
+      Sporthink
+    </span>
+  </div>
 
-        <nav className="flex-1 py-8 px-4 space-y-2 overflow-y-auto custom-scrollbar">
-          <button onClick={() => {setActiveTab('overview'); setSelectedDepartment(null); setSelectedTraining(null);}} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'overview' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <LayoutDashboard size={20} /> Sistem Özeti
-          </button>
-          
-          <div className="pt-4 pb-2 px-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Organizasyon</p></div>
-          <button onClick={() => setActiveTab('personnel')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'personnel' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <Users size={20} /> Personel Yönetimi
-          </button>
-          <button onClick={() => setActiveTab('departments')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'departments' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <Building2 size={20} /> Departman Analizi
-          </button>
+  <nav className="flex-1 py-8 px-4 space-y-2 overflow-y-auto custom-scrollbar">
+    <button
+      onClick={() => {
+        setActiveTab("overview");
+        setSelectedDepartment(null);
+        setSelectedTraining(null);
+      }}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "overview"
+          ? "bg-red-600 text-white shadow-lg"
+          : "text-slate-400 hover:bg-slate-800"
+      }`}
+    >
+      <LayoutDashboard size={20} />
+      Sistem Özeti
+    </button>
 
-          <div className="pt-4 pb-2 px-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Akademi & Otopilot</p></div>
-          <button onClick={() => setActiveTab('academy')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'academy' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <BookOpen size={20} /> Eğitim Kataloğu
-          </button>
-          <button onClick={() => setActiveTab('automation')} className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'automation' ? 'bg-sky-600 text-white shadow-lg' : 'text-sky-300 hover:bg-slate-800'}`}>
-            <div className="flex items-center gap-3"><Workflow size={20} /> Otomasyon Motoru</div>
-          </button>
+    <div className="pt-4 pb-2 px-4">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+        Organizasyon
+      </p>
+    </div>
 
-          <div className="pt-4 pb-2 px-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Oyunlaştırma & İletişim</p></div>
-          <button onClick={() => setActiveTab('surveys')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'surveys' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-300 hover:bg-slate-800'}`}>
-            <ClipboardList size={20} /> Anket Merkezi
-          </button>
-          <button onClick={() => setActiveTab('leaderboard')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'leaderboard' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <Medal size={20} /> Liderlik Tablosu
-          </button>
-          <button onClick={() => setActiveTab('rewards')} className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'rewards' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <div className="flex items-center gap-3"><Trophy size={20} /> Ödül Talepleri</div>
-          </button>
-          <button onClick={() => setActiveTab('announcements')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'announcements' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-            <Megaphone size={20} /> Duyuru Merkezi
-          </button>
-        </nav>
+    <button
+      onClick={() => setActiveTab("personnel")}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "personnel"
+          ? "bg-red-600 text-white shadow-lg"
+          : "text-slate-400 hover:bg-slate-800"
+      }`}
+    >
+      <Users size={20} />
+      Personel Yönetimi
+    </button>
 
-        <div className="p-6 border-t border-slate-800">
-          <div className="mb-4">
-            <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">İnsan Kaynakları</p>
-            <p className="text-sm font-bold text-slate-300 mt-1">{user.name}</p>
-          </div>
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-3 text-red-400 hover:bg-red-400/10 rounded-xl font-bold border border-red-400/20">
-            <LogOut size={18} /> Güvenli Çıkış
-          </button>
-        </div>
-      </aside>
+    <button
+      onClick={() => setActiveTab("departments")}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "departments"
+          ? "bg-red-600 text-white shadow-lg"
+          : "text-slate-400 hover:bg-slate-800"
+      }`}
+    >
+      <Building2 size={20} />
+      Departman Analizi
+    </button>
+
+    <div className="pt-4 pb-2 px-4">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+        Akademi & Otopilot
+      </p>
+    </div>
+
+    <button
+      onClick={() => setActiveTab("academy")}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "academy"
+          ? "bg-red-600 text-white shadow-lg"
+          : "text-slate-400 hover:bg-slate-800"
+      }`}
+    >
+      <BookOpen size={20} />
+      Eğitim Kataloğu
+    </button>
+
+    <button
+      type="button"
+      onClick={() => navigate("/user/egitimler")}
+      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-slate-400 hover:bg-slate-800"
+    >
+      <BookOpen size={20} />
+      Eğitimlerim
+    </button>
+
+    <button
+      onClick={() => setActiveTab("automation")}
+      className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "automation"
+          ? "bg-sky-600 text-white shadow-lg"
+          : "text-sky-300 hover:bg-slate-800"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <Workflow size={20} />
+        Otomasyon Motoru
+      </div>
+    </button>
+
+    <div className="pt-4 pb-2 px-4">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+        Oyunlaştırma & İletişim
+      </p>
+    </div>
+
+    <button
+      onClick={() => setActiveTab("surveys")}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "surveys"
+          ? "bg-indigo-600 text-white shadow-lg"
+          : "text-indigo-300 hover:bg-slate-800"
+      }`}
+    >
+      <ClipboardList size={20} />
+      Anket Merkezi
+    </button>
+
+    <button
+      onClick={() => setActiveTab("leaderboard")}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "leaderboard"
+          ? "bg-red-600 text-white shadow-lg"
+          : "text-slate-400 hover:bg-slate-800"
+      }`}
+    >
+      <Medal size={20} />
+      Liderlik Tablosu
+    </button>
+
+    <button
+      onClick={() => setActiveTab("rewards")}
+      className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "rewards"
+          ? "bg-red-600 text-white shadow-lg"
+          : "text-slate-400 hover:bg-slate-800"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <Trophy size={20} />
+        Ödül Talepleri
+      </div>
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setActiveTab("announcements");
+        setSelectedDepartment(null);
+        setSelectedTraining(null);
+        loadAdminAnnouncements();
+      }}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+        activeTab === "announcements"
+          ? "bg-red-600 text-white shadow-lg"
+          : "text-slate-400 hover:bg-slate-800"
+      }`}
+    >
+      <Megaphone size={20} />
+      Duyuru Merkezi
+    </button>
+    <div className="pt-4 pb-2 px-4">
+  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+    Hesap
+  </p>
+</div>
+
+<button
+  type="button"
+  onClick={() => {
+    setActiveTab("adminProfile");
+    loadAdminProfile();
+  }}
+  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+    activeTab === "adminProfile"
+      ? "bg-red-600 text-white shadow-lg"
+      : "text-slate-400 hover:bg-slate-800"
+  }`}
+>
+  <Users size={20} />
+  Kişisel Bilgiler
+</button>
+
+<button
+  type="button"
+  onClick={() => setActiveTab("adminSecurity")}
+  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${
+    activeTab === "adminSecurity"
+      ? "bg-red-600 text-white shadow-lg"
+      : "text-slate-400 hover:bg-slate-800"
+  }`}
+>
+  <Shield size={20} />
+  Şifre & Güvenlik
+</button>
+  </nav>
+
+  <div className="p-6 border-t border-slate-800">
+    <div className="mb-4">
+      <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+        İnsan Kaynakları
+      </p>
+      <p className="text-sm font-bold text-slate-300 mt-1">{user.name}</p>
+    </div>
+
+    <button
+      onClick={handleLogout}
+      className="w-full flex items-center justify-center gap-2 py-3 text-red-400 hover:bg-red-400/10 rounded-xl font-bold border border-red-400/20"
+    >
+      <LogOut size={18} />
+      Güvenli Çıkış
+    </button>
+  </div>
+</aside>
 
       {/* ANA İÇERİK */}
       <main className="flex-1 flex flex-col relative overflow-hidden">
@@ -822,6 +1111,105 @@ useEffect(() => {
                 </div>
               )}
 
+              {activeTab === "adminProfile" && (
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mb-8">
+      <p className="text-red-600 text-xs font-black tracking-[3px] mb-2">
+        YÖNETİCİ PROFİLİ
+      </p>
+      <h1 className="text-4xl font-black text-slate-950">
+        Kişisel Bilgiler
+      </h1>
+    </div>
+
+    <form
+      onSubmit={handleUpdateAdminProfile}
+      className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 max-w-3xl"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <input
+          value={profileForm.ad}
+          onChange={(e) => setProfileForm({ ...profileForm, ad: e.target.value })}
+          placeholder="Ad"
+          className="px-5 py-4 bg-slate-50 border rounded-2xl font-bold outline-none"
+        />
+
+        <input
+          value={profileForm.soyad}
+          onChange={(e) => setProfileForm({ ...profileForm, soyad: e.target.value })}
+          placeholder="Soyad"
+          className="px-5 py-4 bg-slate-50 border rounded-2xl font-bold outline-none"
+        />
+
+        <input
+          value={profileForm.email}
+          onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+          placeholder="E-posta"
+          className="px-5 py-4 bg-slate-50 border rounded-2xl font-bold outline-none"
+        />
+
+        <input
+          value={profileForm.departman}
+          onChange={(e) => setProfileForm({ ...profileForm, departman: e.target.value })}
+          placeholder="Departman"
+          className="px-5 py-4 bg-slate-50 border rounded-2xl font-bold outline-none"
+        />
+      </div>
+
+      <button className="mt-8 px-8 py-4 bg-red-600 text-white rounded-2xl font-black">
+        Bilgileri Güncelle
+      </button>
+    </form>
+  </div>
+)}
+
+{activeTab === "adminSecurity" && (
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mb-8">
+      <p className="text-red-600 text-xs font-black tracking-[3px] mb-2">
+        HESAP GÜVENLİĞİ
+      </p>
+      <h1 className="text-4xl font-black text-slate-950">
+        Şifre & Güvenlik
+      </h1>
+    </div>
+
+    <form
+      onSubmit={handleUpdateAdminPassword}
+      className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 max-w-xl"
+    >
+      <div className="space-y-5">
+        <input
+          type="password"
+          value={passwordForm.yeniSifre}
+          onChange={(e) =>
+            setPasswordForm({ ...passwordForm, yeniSifre: e.target.value })
+          }
+          placeholder="Yeni şifre"
+          className="w-full px-5 py-4 bg-slate-50 border rounded-2xl font-bold outline-none"
+        />
+
+        <input
+          type="password"
+          value={passwordForm.yeniSifreTekrar}
+          onChange={(e) =>
+            setPasswordForm({
+              ...passwordForm,
+              yeniSifreTekrar: e.target.value,
+            })
+          }
+          placeholder="Yeni şifre tekrar"
+          className="w-full px-5 py-4 bg-slate-50 border rounded-2xl font-bold outline-none"
+        />
+      </div>
+
+      <button className="mt-8 px-8 py-4 bg-red-600 text-white rounded-2xl font-black">
+        Şifreyi Güncelle
+      </button>
+    </form>
+  </div>
+)}
+             
               {/* === EĞİTİM KATALOĞU === */}
               {activeTab === 'academy' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -864,30 +1252,90 @@ useEffect(() => {
                               <span className="font-black text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600">{allTrainings.length} Eğitim</span>
                             </div>
                             <div className="p-6 flex-1 overflow-y-auto max-h-[600px]">
-                              {allTrainings.map((training) => (
-                                <div key={training.id} onClick={() =>
-  navigate(`/admin/egitim-detay/${training.id}`, {
-    state: {
-      egitimId: training.id,
-      id: training.id,
-      title: training.title || training.baslik,
-      egitim: training,
-    },
-  })
-} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl hover:border-red-300 transition-all cursor-pointer mb-3">
-                                  <div className="flex items-center gap-4 flex-1">
-                                    <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center"><Video size={20} /></div>
-                                    <div className="flex-1 pr-4">
-                                      <p className="font-bold text-slate-900">{training.title || training.baslik}</p>
-                                      <div className="flex gap-3 mt-1">
-                                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{training.duration || training.sure}</span>
-                                        <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md">{training.xp || training.xp_degeri} XP</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <ChevronRight size={20} className="text-slate-300" />
-                                </div>
-                              ))}
+                              {allTrainings.map((training) => {
+  const egitimId = training.id || training.egitim_id;
+
+  return (
+    <div
+      key={egitimId}
+      className="p-4 bg-white border border-slate-200 rounded-2xl hover:border-red-300 transition-all mb-3"
+    >
+      <div
+        onClick={() =>
+          navigate(`/admin/egitim-detay/${egitimId}`, {
+            state: {
+              egitimId,
+              id: egitimId,
+              title: training.title || training.baslik,
+              egitim: training,
+            },
+          })
+        }
+        className="flex items-center justify-between cursor-pointer"
+      >
+        <div className="flex items-center gap-4 flex-1">
+          <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
+            <Video size={20} />
+          </div>
+
+          <div className="flex-1 pr-4">
+            <p className="font-bold text-slate-900">
+              {training.title || training.baslik}
+            </p>
+
+            <div className="flex gap-3 mt-1">
+              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                {training.duration || training.sure || "Süre yok"}
+              </span>
+
+              <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md">
+                {training.xp || training.xp_degeri || 0} XP
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <ChevronRight size={20} className="text-slate-300" />
+      </div>
+
+      <div className="flex gap-3 mt-4 pl-16">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/admin/icerik-ekle/${egitimId}`, {
+              state: {
+                egitimId,
+                id: egitimId,
+                egitim: training,
+              },
+            });
+          }}
+          className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black hover:bg-red-700 transition"
+        >
+          İçerik Ekle
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/admin/onizleme/${egitimId}`, {
+              state: {
+                egitimId,
+                id: egitimId,
+                egitim: training,
+              },
+            });
+          }}
+          className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition"
+        >
+          Önizle
+        </button>
+      </div>
+    </div>
+  );
+})}
                             </div>
                           </div>
                         </div>
@@ -981,102 +1429,409 @@ useEffect(() => {
               )}
 
               {/* === YENİ FAZ 2: ANKET MERKEZİ === */}
-              {activeTab === 'surveys' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="mb-8">
-                    <h1 className="text-3xl font-black text-slate-900 mb-2 flex items-center gap-3"><ClipboardList className="text-indigo-600" size={32} /> Anket & 360 Değerlendirme</h1>
-                    <p className="text-slate-500 font-medium">Personel anketleri oluşturun ve 360 derece değerlendirme atamaları yapın.</p>
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
-                      <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
-                        <div className="bg-indigo-100 p-3 rounded-xl"><ClipboardList className="text-indigo-600" size={24} /></div>
-                        <div><h2 className="text-xl font-black text-slate-900">Yeni Anket Şablonu</h2></div>
-                      </div>
-                      <form className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200" onSubmit={handleSaveSurvey}>
-                        <div className="space-y-4">
-                          <input type="text" required value={newSurveyTitle} onChange={e => setNewSurveyTitle(e.target.value)} placeholder="Anket Başlığı (Örn: Yönetici Performans Anketi)" className="w-full px-4 py-3 bg-white border rounded-xl font-bold outline-none focus:border-indigo-500" />
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Anket Soruları</label>
-                            {newSurveyQuestions.map((q, index) => (
-                              <input 
-                                key={index} type="text" placeholder={`Soru ${index + 1}`} value={q}
-                                onChange={(e) => {
-                                  const updated = [...newSurveyQuestions];
-                                  updated[index] = e.target.value;
-                                  setNewSurveyQuestions(updated);
-                                }}
-                                className="w-full px-4 py-3 bg-white border rounded-xl font-medium text-sm outline-none focus:border-indigo-500 mb-2" 
-                              />
-                            ))}
-                            <button type="button" onClick={() => setNewSurveyQuestions([...newSurveyQuestions, ''])} className="text-indigo-600 text-xs font-bold flex items-center gap-1 mt-1">
-                              <Plus size={14}/> Soru Ekle
-                            </button>
-                          </div>
-                          <button type="submit" className="w-full bg-indigo-600 text-white font-black py-3 rounded-xl shadow-lg hover:bg-indigo-700">Anketi Kaydet</button>
-                        </div>
-                      </form>
-                      <div className="flex-1 overflow-y-auto">
-                        <p className="text-xs font-black uppercase text-slate-400 mb-3">Sistemdeki Aktif Anketler</p>
-                        {surveys.map(survey => (
-                          <div key={survey.anket_id} className="flex items-center justify-between p-4 bg-white border border-indigo-100 rounded-xl mb-2">
-                            <p className="text-sm font-bold text-slate-900">{survey.baslik}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              {activeTab === "surveys" && (
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mb-8">
+      <h1 className="text-3xl font-black text-slate-900 mb-2 flex items-center gap-3">
+        <ClipboardList className="text-indigo-600" size={32} />
+        Anket & 360 Değerlendirme
+      </h1>
 
-                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
-                      <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
-                        <div className="bg-pink-100 p-3 rounded-xl"><Target className="text-pink-600" size={24} /></div>
-                        <div><h2 className="text-xl font-black text-slate-900">360 Derece Atama (Kim Kimi Değerlendirecek?)</h2></div>
-                      </div>
-                      <form className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200" onSubmit={handleAssignSurvey}>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Değerlendirilecek Personel (Hedef):</label>
-                            <select name="hedef_id" required className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none">
-                              <option value="">Seçiniz...</option>
-                              {users.map(u => <option key={u.id} value={u.id}>{u.ad} {u.soyad} ({u.departman})</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Değerlendirecek Personel (Hakem):</label>
-                            <select name="degerlendiren_id" required className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none">
-                              <option value="">Seçiniz...</option>
-                              {users.map(u => <option key={u.id} value={u.id}>{u.ad} {u.soyad} ({u.departman})</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kullanılacak Anket:</label>
-                            <select name="anket_id" required className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none">
-                              <option value="">Seçiniz...</option>
-                              {surveys.map(s => <option key={s.anket_id} value={s.anket_id}>{s.baslik}</option>)}
-                            </select>
-                          </div>
-                          <button type="submit" className="w-full bg-pink-600 text-white font-black py-3 rounded-xl hover:bg-pink-700">Atamayı Tamamla</button>
-                        </div>
-                      </form>
-                      <div className="flex-1 overflow-y-auto">
-                        <p className="text-xs font-black uppercase text-slate-400 mb-3">Güncel Değerlendirme Görevleri</p>
-                        {surveyAssignments.length === 0 ? (
-                           <p className="text-slate-400 text-sm font-medium text-center py-5">Henüz anket ataması yapılmamış.</p>
-                        ) : (
-                          surveyAssignments.map(ata => (
-                            <div key={ata.atama_id} className="flex items-center justify-between p-4 bg-white border border-pink-100 rounded-xl mb-2 text-sm">
-                              <div>
-                                <p className="font-bold text-slate-900">{ata.degerlendiren} <span className="font-normal text-slate-500">değerlendiriyor:</span></p>
-                                <p className="font-black text-pink-700">{ata.hedef_kullanici}</p>
-                              </div>
-                              <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded">{ata.durum}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
+      <p className="text-slate-500 font-medium">
+        Personel anketleri oluşturun, değerlendirme atayın ve anket analizlerini takip edin.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8">
+        <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
+            <ClipboardList size={24} />
+          </div>
+          <p className="text-slate-400 text-xs font-black tracking-[2px]">
+            TOPLAM ANKET
+          </p>
+          <h2 className="text-3xl font-black text-slate-900 mt-1">
+            {surveyStats.totalSurveys}
+          </h2>
+        </div>
+
+        <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+          <div className="w-12 h-12 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center mb-4">
+            <Target size={24} />
+          </div>
+          <p className="text-slate-400 text-xs font-black tracking-[2px]">
+            ATANAN GÖREV
+          </p>
+          <h2 className="text-3xl font-black text-slate-900 mt-1">
+            {surveyStats.totalAssignments}
+          </h2>
+        </div>
+
+        <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
+            <CheckCircle size={24} />
+          </div>
+          <p className="text-slate-400 text-xs font-black tracking-[2px]">
+            TAMAMLANMA
+          </p>
+          <h2 className="text-3xl font-black text-slate-900 mt-1">
+            %{surveyCompletionRate}
+          </h2>
+        </div>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
+        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
+          <div className="bg-indigo-100 p-3 rounded-xl">
+            <ClipboardList className="text-indigo-600" size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900">
+              Yeni Anket Şablonu
+            </h2>
+          </div>
+        </div>
+
+        <form
+          className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200"
+          onSubmit={handleSaveSurvey}
+        >
+          <div className="space-y-4">
+            <input
+              type="text"
+              required
+              value={newSurveyTitle}
+              onChange={(e) => setNewSurveyTitle(e.target.value)}
+              placeholder="Anket Başlığı"
+              className="w-full px-4 py-3 bg-white border rounded-xl font-bold outline-none focus:border-indigo-500"
+            />
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">
+                Anket Soruları
+              </label>
+
+              {newSurveyQuestions.map((q, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  placeholder={`Soru ${index + 1}`}
+                  value={q}
+                  onChange={(e) => {
+                    const updated = [...newSurveyQuestions];
+                    updated[index] = e.target.value;
+                    setNewSurveyQuestions(updated);
+                  }}
+                  className="w-full px-4 py-3 bg-white border rounded-xl font-medium text-sm outline-none focus:border-indigo-500 mb-2"
+                />
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setNewSurveyQuestions([...newSurveyQuestions, ""])}
+                className="text-indigo-600 text-xs font-bold flex items-center gap-1 mt-1"
+              >
+                <Plus size={14} />
+                Soru Ekle
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-indigo-600 text-white font-black py-3 rounded-xl shadow-lg hover:bg-indigo-700"
+            >
+              Anketi Kaydet
+            </button>
+          </div>
+        </form>
+
+        <div className="flex-1 overflow-y-auto">
+          <p className="text-xs font-black uppercase text-slate-400 mb-3">
+            Sistemdeki Aktif Anketler
+          </p>
+
+          {surveys.length === 0 ? (
+            <p className="text-slate-400 text-sm font-semibold text-center py-8">
+              Henüz anket oluşturulmamış.
+            </p>
+          ) : (
+            surveys.map((survey) => (
+              <div
+                key={survey.anket_id}
+                className="flex items-center justify-between p-4 bg-white border border-indigo-100 rounded-xl mb-2"
+              >
+                <p className="text-sm font-bold text-slate-900">
+                  {survey.baslik}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
+        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
+          <div className="bg-pink-100 p-3 rounded-xl">
+            <Target className="text-pink-600" size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900">
+              360 Derece Atama
+            </h2>
+          </div>
+        </div>
+
+        <form
+          className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200"
+          onSubmit={handleAssignSurvey}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Değerlendirilecek Personel
+              </label>
+              <select
+                name="hedef_id"
+                required
+                className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
+              >
+                <option value="">Seçiniz...</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.ad} {u.soyad} ({u.departman})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Değerlendirecek Personel
+              </label>
+              <select
+                name="degerlendiren_id"
+                required
+                className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
+              >
+                <option value="">Seçiniz...</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.ad} {u.soyad} ({u.departman})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Kullanılacak Anket
+              </label>
+              <select
+                name="anket_id"
+                required
+                className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
+              >
+                <option value="">Seçiniz...</option>
+                {surveys.map((s) => (
+                  <option key={s.anket_id} value={s.anket_id}>
+                    {s.baslik}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-pink-600 text-white font-black py-3 rounded-xl hover:bg-pink-700"
+            >
+              Atamayı Tamamla
+            </button>
+          </div>
+        </form>
+
+        <div className="flex-1 overflow-y-auto">
+          <p className="text-xs font-black uppercase text-slate-400 mb-3">
+            Güncel Değerlendirme Görevleri
+          </p>
+
+          {surveyAssignments.length === 0 ? (
+            <p className="text-slate-400 text-sm font-medium text-center py-5">
+              Henüz anket ataması yapılmamış.
+            </p>
+          ) : (
+            surveyAssignments.map((ata) => (
+              <div
+                key={ata.atama_id}
+                className="flex items-center justify-between p-4 bg-white border border-pink-100 rounded-xl mb-2 text-sm"
+              >
+                <div>
+                  <p className="font-bold text-slate-900">
+                    {ata.degerlendiren}{" "}
+                    <span className="font-normal text-slate-500">
+                      değerlendiriyor:
+                    </span>
+                  </p>
+                  <p className="font-black text-pink-700">
+                    {ata.hedef_kullanici}
+                  </p>
                 </div>
-              )}
+
+                <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded">
+                  {ata.durum}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
+        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
+          <div className="bg-emerald-100 p-3 rounded-xl">
+            <PieChart className="text-emerald-600" size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900">
+              Anket Analizi
+            </h2>
+            <p className="text-slate-400 text-sm font-bold mt-1">
+              Anket bazlı tamamlanma analizi.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">
+            Analiz Edilecek Anket
+          </label>
+
+          <select
+            value={selectedSurveyAnalysis?.anket_id || ""}
+            onChange={(e) => {
+              const selected = surveys.find(
+                (s) => String(s.anket_id) === String(e.target.value)
+              );
+              setSelectedSurveyAnalysis(selected || null);
+            }}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-emerald-500"
+          >
+            <option value="">Anket seçiniz...</option>
+            {surveys.map((survey) => (
+              <option key={survey.anket_id} value={survey.anket_id}>
+                {survey.baslik}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {!selectedSurveyAnalysis ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center mb-5">
+              <PieChart size={38} />
+            </div>
+
+            <h3 className="text-xl font-black text-slate-900 mb-2">
+              Anket seçilmedi
+            </h3>
+
+            <p className="text-slate-400 font-semibold leading-6">
+              Analiz görmek için üstten bir anket seç.
+            </p>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 mb-5">
+              <p className="text-emerald-600 text-xs font-black tracking-[2px] mb-2">
+                SEÇİLİ ANKET
+              </p>
+
+              <h3 className="text-lg font-black text-slate-900">
+                {selectedSurveyAnalysis.baslik}
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+                <p className="text-indigo-600 text-[10px] font-black uppercase">
+                  Atama
+                </p>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {selectedSurveyAssignments.length}
+                </h3>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                <p className="text-emerald-600 text-[10px] font-black uppercase">
+                  Tamamlandı
+                </p>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {selectedSurveyCompleted}
+                </h3>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="flex justify-between text-xs font-black mb-2">
+                <span className="text-slate-400">Tamamlanma Oranı</span>
+                <span className="text-emerald-600">%{selectedSurveyRate}</span>
+              </div>
+
+              <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full"
+                  style={{ width: `${selectedSurveyRate}%` }}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs font-black uppercase text-slate-400 mb-3">
+              Atama Detayları
+            </p>
+
+            {selectedSurveyAssignments.length === 0 ? (
+              <p className="text-slate-400 text-sm font-semibold text-center py-8">
+                Bu ankete henüz atama yapılmamış.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {selectedSurveyAssignments.map((ata) => (
+                  <div
+                    key={ata.atama_id}
+                    className="p-4 bg-white border border-slate-200 rounded-2xl"
+                  >
+                    <p className="font-black text-slate-900 text-sm">
+                      {ata.degerlendiren || "Değerlendiren yok"}
+                    </p>
+
+                    <p className="text-slate-500 text-xs font-bold mt-1">
+                      Değerlendirilen:{" "}
+                      <span className="text-pink-600 font-black">
+                        {ata.hedef_kullanici || "Hedef yok"}
+                      </span>
+                    </p>
+
+                    <span
+                      className={`inline-block mt-3 px-3 py-1 rounded-lg text-[10px] font-black ${
+                        ata.durum === "tamamlandi" ||
+                        ata.durum === "Tamamlandı" ||
+                        ata.durum === "completed"
+                          ? "bg-emerald-50 text-emerald-600"
+                          : "bg-yellow-50 text-yellow-600"
+                      }`}
+                    >
+                      {ata.durum || "Bekliyor"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 
               {/* === LİDERLİK TABLOSU === */}
               {activeTab === 'leaderboard' && (
@@ -1112,8 +1867,20 @@ useEffect(() => {
 
           return (
             <div
-              key={item.id}
-              className={`flex items-center gap-5 p-5 rounded-[1.7rem] border transition hover:-translate-y-1 hover:shadow-md ${
+  key={item.id}
+  onClick={() =>
+    openPersonnelProfile({
+      id: item.id || item.kullanici_id,
+      kullanici_id: item.id || item.kullanici_id,
+      ad: item.ad,
+      soyad: item.soyad,
+      departman: item.departman,
+      rol: item.rol || "Kullanıcı",
+      xp: item.xp || 0,
+      tamamlanma_orani: item.tamamlanma_orani || 0,
+    })
+  }
+  className={`flex items-center gap-5 p-5 rounded-[1.7rem] border transition hover:-translate-y-1 hover:shadow-md cursor-pointer ${
                 rank === 1
                   ? "bg-gradient-to-r from-yellow-50 to-white border-yellow-200"
                   : rank === 2
@@ -1243,195 +2010,237 @@ useEffect(() => {
                   </div>
                 </div>
               )}
-
               {/* === DUYURULAR === */}
-              {activeTab === 'announcements' && (
-                <div className="min-h-screen bg-[#F8FAFC] p-10">
-  <div className="max-w-7xl mx-auto">
-    <div className="flex items-start justify-between mb-8">
-      <div>
-        <p className="text-red-600 text-xs font-black tracking-[3px] mb-2">
-          İLETİŞİM MERKEZİ
-        </p>
-
-        <h1 className="text-5xl font-black text-slate-950 flex items-center gap-3">
-          Duyuru Merkezi 📢
-        </h1>
-
-        <p className="text-slate-500 font-semibold mt-3 leading-7 max-w-2xl">
-          Kurum içi duyuruları hızlıca oluştur, belirli departmanlara gönder ve çalışan etkileşimini yönet.
-        </p>
-      </div>
-
-      <div className="hidden xl:flex bg-white border border-slate-200 rounded-[2rem] px-6 py-5 shadow-sm items-center gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center text-2xl">
-          🔔
-        </div>
-
+{activeTab === "announcements" && (
+  <div className="min-h-screen bg-[#F8FAFC] p-10">
+    <div className="max-w-7xl mx-auto">
+      <div className="flex items-start justify-between mb-8">
         <div>
-          <p className="text-slate-400 text-xs font-black tracking-widest">
-            AKTİF DUYURU
+          <p className="text-red-600 text-xs font-black tracking-[3px] mb-2">
+            İLETİŞİM MERKEZİ
           </p>
 
-          <h3 className="text-3xl font-black text-slate-950">
-            12
-          </h3>
+          <h1 className="text-5xl font-black text-slate-950 flex items-center gap-3">
+            Duyuru Merkezi 📢
+          </h1>
+
+          <p className="text-slate-500 font-semibold mt-3 leading-7 max-w-2xl">
+            Kurum içi duyuruları hızlıca oluştur, belirli departmanlara gönder
+            ve gönderdiğin geçmiş duyuruları buradan görüntüle.
+          </p>
+        </div>
+
+        <div className="hidden xl:flex bg-white border border-slate-200 rounded-[2rem] px-6 py-5 shadow-sm items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center text-2xl">
+            🔔
+          </div>
+
+          <div>
+            <p className="text-slate-400 text-xs font-black tracking-widest">
+              GÖNDERİLEN
+            </p>
+
+            <h3 className="text-3xl font-black text-slate-950">
+              {adminAnnouncements.length}
+            </h3>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8">
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-xs font-black tracking-[3px] text-slate-400 mb-3">
-              HEDEF KİTLE
-            </label>
-
-            <select
-  value={adminAnnouncementTarget}
-  onChange={(e) => setAdminAnnouncementTarget(e.target.value)}
-  className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-black text-slate-900 outline-none focus:border-red-500 transition"
->
-  <option value="all">Tüm Şirket</option>
-  <option value="department">Departman</option>
-</select>
-
-{adminAnnouncementTarget === "department" && (
-  <select
-    value={adminAnnouncementDept}
-    onChange={(e) => setAdminAnnouncementDept(e.target.value)}
-    className="mt-4 w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-black text-slate-900 outline-none focus:border-red-500 transition"
-  >
-    <option value="IT">IT</option>
-    <option value="İnsan Kaynakları">İnsan Kaynakları</option>
-    <option value="Satış">Satış</option>
-    <option value="Pazarlama">Pazarlama</option>
-    <option value="Depo Lojistik">Depo Lojistik</option>
-  </select>
-)}
-          </div>
-
-          <div>
-            <label className="block text-xs font-black tracking-[3px] text-slate-400 mb-3">
-              DUYURU TÜRÜ
-            </label>
-
-            <select className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-black text-slate-900 outline-none focus:border-red-500 transition">
-              <option>Genel Duyuru</option>
-              <option>Acil Bildirim</option>
-              <option>Eğitim Duyurusu</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-xs font-black tracking-[3px] text-slate-400 mb-3">
-            BAŞLIK
-          </label>
-
-         <input
-  type="text"
-  value={notifTitle}
-  onChange={(e) => setNotifTitle(e.target.value)}
-  placeholder="Duyuru başlığını gir."
-  className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-bold text-slate-900 outline-none focus:border-red-500 transition"
-/>
-        </div>
-
-        <div className="mb-8">
-          <label className="block text-xs font-black tracking-[3px] text-slate-400 mb-3">
-            MESAJ
-          </label>
-
-         <textarea
-  rows={7}
-  value={notifMessage}
-  onChange={(e) => setNotifMessage(e.target.value)}
-  placeholder="Duyuru mesajını yaz."
-  className="w-full rounded-[2rem] border border-slate-200 bg-slate-50 p-5 font-semibold text-slate-700 outline-none resize-none focus:border-red-500 transition"
-/>
-        </div>
-
-        <div className="flex items-center justify-between gap-5">
-          <div className="hidden md:flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4">
-            <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
-              ✉️
+      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-8">
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8 h-fit">
+          <div className="flex items-center gap-4 mb-7">
+            <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center">
+              <Send size={26} />
             </div>
 
             <div>
-              <p className="text-xs font-black text-slate-400 tracking-widest">
-                GÖNDERİM
+              <p className="text-red-600 text-xs font-black tracking-[3px]">
+                YENİ DUYURU
               </p>
-
-              <p className="font-black text-slate-900">
-                Mobil + Web Bildirimi
-              </p>
+              <h2 className="text-2xl font-black text-slate-900">
+                Duyuru Gönder
+              </h2>
             </div>
           </div>
 
-          <button
-  type="button"
-  onClick={handleSendNotificationClick}
-  className="flex-1 md:flex-none md:w-[280px] h-16 rounded-2xl bg-red-600 hover:bg-red-700 transition-all text-white font-black text-lg shadow-xl shadow-red-600/20"
->
-  Duyuruyu Gönder
-</button>
-        </div>
-      </div>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-black tracking-[3px] text-slate-400 mb-3">
+                HEDEF KİTLE
+              </label>
 
-      <div className="space-y-5">
-        <div className="bg-slate-950 text-white rounded-[2.5rem] p-7 shadow-xl">
-          <div className="w-16 h-16 rounded-3xl bg-red-600 flex items-center justify-center text-3xl mb-5">
-            📢
+              <select
+                value={adminAnnouncementTarget}
+                onChange={(e) => setAdminAnnouncementTarget(e.target.value)}
+                className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-black text-slate-900 outline-none focus:border-red-500 transition"
+              >
+                <option value="all">Tüm Şirket</option>
+                <option value="department">Departman</option>
+              </select>
+
+              {adminAnnouncementTarget === "department" && (
+                <select
+                  value={adminAnnouncementDept}
+                  onChange={(e) => setAdminAnnouncementDept(e.target.value)}
+                  className="mt-4 w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-black text-slate-900 outline-none focus:border-red-500 transition"
+                >
+                  <option value="IT">IT</option>
+                  <option value="İnsan Kaynakları">İnsan Kaynakları</option>
+                  <option value="Satış">Satış</option>
+                  <option value="Pazarlama">Pazarlama</option>
+                  <option value="Depo Lojistik">Depo Lojistik</option>
+                </select>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-black tracking-[3px] text-slate-400 mb-3">
+                BAŞLIK
+              </label>
+
+              <input
+                type="text"
+                value={notifTitle}
+                onChange={(e) => setNotifTitle(e.target.value)}
+                placeholder="Duyuru başlığını gir."
+                className="w-full h-16 rounded-2xl border border-slate-200 bg-slate-50 px-5 font-bold text-slate-900 outline-none focus:border-red-500 transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black tracking-[3px] text-slate-400 mb-3">
+                MESAJ
+              </label>
+
+              <textarea
+                rows={7}
+                value={notifMessage}
+                onChange={(e) => setNotifMessage(e.target.value)}
+                placeholder="Duyuru mesajını yaz."
+                className="w-full rounded-[2rem] border border-slate-200 bg-slate-50 p-5 font-semibold text-slate-700 outline-none resize-none focus:border-red-500 transition"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSendNotificationClick}
+              className="w-full h-16 rounded-2xl bg-red-600 hover:bg-red-700 transition-all text-white font-black text-lg shadow-xl shadow-red-600/20 flex items-center justify-center gap-2"
+            >
+              <Send size={19} />
+              Duyuruyu Gönder
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-7 border-b border-slate-100 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-red-600 text-xs font-black tracking-[3px] mb-2">
+                GEÇMİŞ DUYURULAR
+              </p>
+
+              <h2 className="text-2xl font-black text-slate-900">
+                Gönderdiğin Duyurular
+              </h2>
+
+              <p className="text-slate-400 font-bold text-sm mt-1">
+                {adminAnnouncements.length} duyuru listeleniyor
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={loadAdminAnnouncements}
+              className="px-5 py-3 bg-red-50 text-red-600 rounded-2xl font-black text-sm"
+            >
+              Yenile
+            </button>
           </div>
 
-          <p className="text-red-300 text-xs font-black tracking-[3px] mb-2">
-            DUYURU İPUCU
-          </p>
+          <div className="p-6 space-y-4 max-h-[720px] overflow-y-auto">
+            {adminAnnouncements.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-24 h-24 bg-red-50 text-red-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                  <Megaphone size={44} />
+                </div>
 
-          <h2 className="text-2xl font-black mb-4">
-            Kısa ve net başlıklar kullan
-          </h2>
+                <h3 className="text-2xl font-black text-slate-900 mb-2">
+                  Henüz gönderilmiş duyuru yok
+                </h3>
 
-          <p className="text-slate-400 leading-7 font-semibold">
-            Çalışan etkileşimini artırmak için duyuru başlığını kısa, mesajı ise net tut.
-          </p>
-        </div>
+                <p className="text-slate-400 font-semibold">
+                  Duyuru gönderdiğinde burada görünecek.
+                </p>
+              </div>
+            ) : (
+              adminAnnouncements.map((item, index) => {
+                const message = item.mesaj || item.icerik || item.message || "";
+                const targetText =
+                  item.hedef_kitle === "department" || item.departman
+                    ? item.departman || "Departman"
+                    : "Tüm Şirket";
 
-        <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm">
-          <p className="text-slate-400 text-xs font-black tracking-[3px] mb-5">
-            SON GÖNDERİMLER
-          </p>
+                return (
+                  <div
+                    key={item.id || item.duyuru_id || index}
+                    className="bg-slate-50 border border-slate-200 rounded-[2rem] p-6 hover:bg-white hover:shadow-md transition"
+                  >
+                    <div className="flex items-start gap-5">
+                      <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <Megaphone size={25} />
+                      </div>
 
-          <div className="space-y-4">
-  {adminAnnouncements.length === 0 ? (
-    <p className="text-sm font-bold text-slate-400">
-      Henüz gönderilmiş duyuru yok.
-    </p>
-  ) : (
-    adminAnnouncements.slice(0, 5).map((item) => (
-      <div
-        key={item.id || item.duyuru_id}
-        className="bg-slate-50 rounded-2xl p-4"
-      >
-        <p className="font-black text-slate-900">
-          {item.baslik || item.title}
-        </p>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between gap-4 mb-3">
+                          <div>
+                            <p className="text-red-600 text-[10px] font-black tracking-[3px] mb-1">
+                              YÖNETİCİ DUYURUSU
+                            </p>
 
-        <p className="text-sm text-slate-400 mt-1">
-          {item.hedef_kitle || item.hedefKitle || "Duyuru"} · Gönderildi
-        </p>
-      </div>
-    ))
-  )}
-</div>
+                            <h3 className="text-xl font-black text-slate-900">
+                              {item.baslik || item.title || "Başlıksız Duyuru"}
+                            </h3>
+                          </div>
+
+                          <span className="h-fit bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-black">
+                            Aktif
+                          </span>
+                        </div>
+
+                        <p className="text-slate-600 font-semibold leading-7 mb-5">
+                          {message || "Mesaj içeriği bulunamadı."}
+                        </p>
+
+                        <div className="flex flex-wrap gap-2">
+                          <span className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-black text-slate-500">
+                            {targetText}
+                          </span>
+
+                          <span className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-black text-slate-500">
+                            {item.gonderilen_kisi_sayisi || 0} kişi
+                          </span>
+
+                          <span className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-black text-slate-500">
+                            {item.olusturma_tarihi || item.created_at
+                              ? new Date(
+                                  item.olusturma_tarihi || item.created_at
+                                ).toLocaleDateString("tr-TR")
+                              : "Tarih yok"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-              )}
+)}
             </>
           )}
         </div>

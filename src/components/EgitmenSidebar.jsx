@@ -65,14 +65,37 @@ export default function EgitmenSidebar({ user, setUser }) {
       items: [
         { label: "Ana Sayfa", path: "/egitmen", icon: LayoutDashboard },
         { label: "Eğitimlerim", path: "/egitmen/egitimlerim", icon: BookOpen },
-        { label: "Eğitim Oluştur", path: "/egitmen/egitim-olustur", icon: PlusCircle },
+        {
+          label: "Eğitim Oluştur",
+          path: "/egitmen/egitim-olustur",
+          icon: PlusCircle,
+        },
+        {
+          label: "Öğrenme Alanım",
+          path: "/egitmen/ogrenme-alanim",
+          icon: BookOpen,
+        },
+        
+        {
+          label: "Sertifikalarım",
+          path: "/egitmen/sertifikalar",
+          icon: Award,
+        },
       ],
     },
     {
       title: "ÖĞRENCİ TAKİBİ",
       items: [
-        { label: "Öğrenci İlerlemesi", path: "/egitmen/ogrenci-ilerlemesi", icon: Users },
-        { label: "Eğitim Analizi", path: "/egitmen/egitim-analizi", icon: BarChart3 },
+        {
+          label: "Öğrenci İlerlemesi",
+          path: "/egitmen/ogrenci-ilerlemesi",
+          icon: Users,
+        },
+        {
+          label: "Eğitim Analizi",
+          path: "/egitmen/egitim-analizi",
+          icon: BarChart3,
+        },
         { label: "Sorular", path: "/egitmen/sorular", icon: MessageSquare },
       ],
     },
@@ -80,7 +103,11 @@ export default function EgitmenSidebar({ user, setUser }) {
       title: "İLETİŞİM",
       items: [
         { label: "Duyurular", path: "/egitmen/duyurular", icon: Megaphone },
-        { label: "Anket Yönetimi", path: "/egitmen/anket-yonetimi", icon: ClipboardList },
+        {
+          label: "Anket Yönetimi",
+          path: "/egitmen/anket-yonetimi",
+          icon: ClipboardList,
+        },
         { label: "Bildirimler", path: "/egitmen/bildirimler", icon: Bell },
       ],
     },
@@ -88,7 +115,11 @@ export default function EgitmenSidebar({ user, setUser }) {
       title: "İÇERİK & AI",
       items: [
         { label: "AI Stüdyo", path: "/egitmen/ai-studyo", icon: Wand2 },
-        { label: "Kaynak Yönetimi", path: "/egitmen/kaynak-yonetimi", icon: FolderOpen },
+        {
+          label: "Kaynak Yönetimi",
+          path: "/egitmen/kaynak-yonetimi",
+          icon: FolderOpen,
+        },
         { label: "Asistan", path: "/egitmen/asistan", icon: Bot },
       ],
     },
@@ -171,8 +202,16 @@ export default function EgitmenSidebar({ user, setUser }) {
             isOpen={openMenus.profil}
             onToggle={toggleMenu}
             items={[
-              { label: "Kişisel Bilgiler", path: "/egitmen/kisisel-bilgiler", icon: UserRound },
-              { label: "Yetkinlikler", path: "/egitmen/yetkinlikler", icon: Award },
+              {
+                label: "Kişisel Bilgiler",
+                path: "/egitmen/kisisel-bilgiler",
+                icon: UserRound,
+              },
+              {
+                label: "Yetkinlikler",
+                path: "/egitmen/yetkinlikler",
+                icon: Award,
+              },
             ]}
           />
 
@@ -184,9 +223,21 @@ export default function EgitmenSidebar({ user, setUser }) {
             isOpen={openMenus.ayarlar}
             onToggle={toggleMenu}
             items={[
-              { label: "Şifre & Güvenlik", path: "/egitmen/sifre-guvenlik", icon: ShieldCheck },
-              { label: "Görünüm", path: "/egitmen/gorunum", icon: Palette },
-              { label: "Uygulama Hakkında", path: "/egitmen/uygulama-hakkinda", icon: Info },
+              {
+                label: "Şifre & Güvenlik",
+                path: "/egitmen/sifre-guvenlik",
+                icon: ShieldCheck,
+              },
+              {
+                label: "Görünüm",
+                path: "/egitmen/gorunum",
+                icon: Palette,
+              },
+              {
+                label: "Uygulama Hakkında",
+                path: "/egitmen/uygulama-hakkinda",
+                icon: Info,
+              },
             ]}
           />
 
@@ -198,7 +249,11 @@ export default function EgitmenSidebar({ user, setUser }) {
             isOpen={openMenus.destek}
             onToggle={toggleMenu}
             items={[
-              { label: "Eğitmen Rehberi", path: "/egitmen/yardim", icon: BookMarked },
+              {
+                label: "Eğitmen Rehberi",
+                path: "/egitmen/yardim",
+                icon: BookMarked,
+              },
             ]}
           />
         </div>
@@ -227,7 +282,9 @@ function MenuLink({ item, open }) {
       style={({ isActive }) => ({
         ...styles.link,
         justifyContent: open ? "flex-start" : "center",
-        background: isActive ? "linear-gradient(135deg, #ED0015, #B80011)" : "transparent",
+        background: isActive
+          ? "linear-gradient(135deg, #ED0015, #B80011)"
+          : "transparent",
         color: isActive ? "#fff" : "#94A3B8",
         boxShadow: isActive ? "0 14px 30px rgba(237,0,21,0.22)" : "none",
       })}
@@ -238,7 +295,15 @@ function MenuLink({ item, open }) {
   );
 }
 
-function DropdownMenu({ open, title, icon: Icon, menuKey, isOpen, onToggle, items }) {
+function DropdownMenu({
+  open,
+  title,
+  icon: Icon,
+  menuKey,
+  isOpen,
+  onToggle,
+  items,
+}) {
   return (
     <div>
       <button

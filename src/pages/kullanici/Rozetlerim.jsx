@@ -130,23 +130,6 @@ export default function Rozetlerim({ user, setUser }) {
     
 
       <main className="flex-1">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 sticky top-0 z-10">
-          <div className="w-[430px] h-12 bg-slate-100 rounded-2xl flex items-center px-4 gap-3">
-            <Search size={20} className="text-slate-400" />
-            <input
-              placeholder="Rozet ara..."
-              className="bg-transparent outline-none w-full text-sm font-semibold text-slate-600"
-            />
-          </div>
-
-          <button
-            onClick={() => navigate("/user/bildirimler")}
-            className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/20"
-          >
-            <Bell size={22} />
-          </button>
-        </header>
-
         <section className="p-10">
           <div className="mb-8">
             <p className="text-slate-500 font-bold mb-1">Başarı koleksiyonun</p>

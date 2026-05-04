@@ -4,6 +4,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import LoginScreen from "./pages/LoginScreen";
 import AdminDashboard from "./pages/AdminDashboard";
 import DeptManagerDashboard from "./pages/DeptManagerDashboard";
+import AdminOgrenmeDetay from "./pages/AdminOgrenmeDetay";
+import AdminOgrenmeDersDetay from "./pages/AdminOgrenmeDersDetay";
+import AdminQuizScreen from "./pages/AdminQuizScreen";
+import AdminEgitimlerim from "./pages/AdminEgitimlerim";
+import AdminIcerikEkle from "./pages/AdminIcerikEkle";
+import AdminEgitimOnizleme from "./pages/AdminEgitimOnizleme";
 
 import KullaniciAnaSayfa from "./pages/kullanici/KullaniciAnaSayfa";
 import Egitimlerim from "./pages/kullanici/Egitimlerim";
@@ -59,7 +65,13 @@ import EgitmenDuyuruMerkezi from "./pages/egitmen/EgitmenDuyuruMerkezi";
 import EgitmenAnketYonetimi from "./pages/egitmen/EgitmenAnketYonetimi";
 import OgrenciIlerlemesi from "./pages/egitmen/OgrenciIlerlemesi";
 import EgitmenAnaliz from "./pages/egitmen/EgitmenAnaliz";
-
+import EgitmenAnketAnaliz from "./pages/egitmen/EgitmenAnketAnaliz";
+import EgitmenGecmisDuyurular from "./pages/egitmen/EgitmenGecmisDuyurular";
+import EgitmenOgrenmeAlanim from "./pages/egitmen/EgitmenOgrenmeAlanim";
+import EgitmenOgrenmeDetay from "./pages/egitmen/EgitmenOgrenmeDetay";
+import EgitmenOgrenmeDersDetay from "./pages/egitmen/EgitmenOgrenmeDersDetay";
+import EgitmenQuizScreen from "./pages/egitmen/EgitmenQuizScreen";
+import EgitmenSertifikalarim from "./pages/egitmen/EgitmenSertifikalarim";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -67,40 +79,45 @@ function App() {
   const getRole = () => String(user?.role || "").toUpperCase();
 
   const renderDashboard = () => {
-    if (!user) return <Navigate to="/" />;
+  if (!user) return <Navigate to="/" />;
 
-    const role = getRole();
+  const role = getRole();
 
-    if (role === "IK_YONETICI") {
-      return <AdminDashboard user={user} />;
-    }
+  if (role === "IK_YONETICI") {
+    return <AdminDashboard user={user} />;
+  }
 
-    if (role === "DEPT_YONETICI") {
-      return <DeptManagerDashboard user={user} />;
-    }
+  if (role === "DEPT_YONETICI") {
+    return <DeptManagerDashboard user={user} />;
+  }
 
-    if (role === "EGITMEN" || role === "EĞİTMEN") {
-      return <Navigate to="/egitmen" />;
-    }
+  if (role === "EGITMEN" || role === "EĞİTMEN") {
+    return <Navigate to="/egitmen" />;
+  }
 
-    if (role === "CALISAN" || role === "KULLANICI") {
-      return <Navigate to="/user/dashboard" />;
-    }
+  if (role === "CALISAN" || role === "KULLANICI") {
+    return <Navigate to="/user/dashboard" />;
+  }
 
-    return <Navigate to="/" />;
-  };
+  return <Navigate to="/" />;
+};
 
   const renderUserPage = (PageComponent) => {
-    if (!user) return <Navigate to="/" />;
+  if (!user) return <Navigate to="/" />;
 
-    const role = getRole();
+  const role = getRole();
 
-    if (role === "CALISAN" || role === "KULLANICI") {
-      return <PageComponent user={user} setUser={setUser} />;
-    }
+  if (
+    role === "CALISAN" ||
+    role === "KULLANICI" ||
+    role === "IK_YONETICI" ||
+    role === "DEPT_YONETICI"
+  ) {
+    return <PageComponent user={user} setUser={setUser} />;
+  }
 
-    return <Navigate to="/dashboard" />;
-  };
+  return <Navigate to="/dashboard" />;
+};
 
   const renderInstructorPage = (PageComponent) => {
     if (!user) return <Navigate to="/" />;
@@ -161,6 +178,21 @@ function App() {
         />
 
         <Route path="/dashboard" element={renderDashboard()} />
+        <Route path="/admin/ogrenme-detay/:id" element={<AdminOgrenmeDetay user={user} />} />
+<Route path="/admin/ogrenme-ders/:id/:moduleId" element={<AdminOgrenmeDersDetay user={user} />} />
+<Route path="/admin/quiz/:id" element={<AdminQuizScreen user={user} />} />
+<Route
+  path="/admin/egitimlerim"
+  element={<AdminEgitimlerim user={user} />}
+/>
+<Route
+  path="/admin/icerik-ekle/:id"
+  element={<AdminIcerikEkle user={user} />}
+/><Route
+  path="/admin/onizleme/:id"
+  element={<AdminEgitimOnizleme user={user} />}
+/>
+
 
         <Route path="/user/dashboard" element={renderUserPage(KullaniciAnaSayfa)} />
         <Route path="/user/egitimler" element={renderUserPage(Egitimlerim)} />
@@ -222,6 +254,22 @@ function App() {
   path="/egitmen/sorular"
   element={renderInstructorPage(EgitmenSorular)}
 /><Route
+  path="/egitmen/ogrenme-detay/:id"
+  element={<EgitmenOgrenmeDetay user={user} />}
+/>
+
+<Route
+  path="/egitmen/ogrenme-ders/:id/:moduleId"
+  element={<EgitmenOgrenmeDersDetay user={user} />}
+/><Route
+  path="/egitmen/quiz/:id"
+  element={<EgitmenQuizScreen user={user} />}
+/>
+
+<Route
+  path="/egitmen/sertifikalar"
+  element={<EgitmenSertifikalarim user={user} />}
+/><Route
   path="/egitmen/soru-detay"
   element={renderInstructorPage(EgitmenSoruDetay)}
 /><Route
@@ -260,6 +308,9 @@ function App() {
   path="/egitmen/yardim"
   element={renderInstructorPage(Yardim)}
 /><Route
+  path="/egitmen/ogrenme-alanim"
+  element={renderInstructorPage(EgitmenOgrenmeAlanim)}
+/><Route
   path="/egitmen/ogrenci-ilerlemesi"
   element={renderInstructorPage(OgrenciIlerlemesi)}
 />
@@ -289,8 +340,14 @@ function App() {
   path="/egitmen/duyurular"
   element={renderInstructorPage(EgitmenDuyuruMerkezi)}
 /><Route
+  path="/egitmen/gecmis-duyurular"
+  element={renderInstructorPage(EgitmenGecmisDuyurular)}
+/><Route
   path="/egitmen/anket-yonetimi"
   element={renderInstructorPage(EgitmenAnketYonetimi)}
+/><Route
+  path="/egitmen/anket-analiz"
+  element={renderInstructorPage(EgitmenAnketAnaliz)}
 /><Route
   path="/egitmen/quiz-olustur"
   element={<QuizOlustur user={user} setUser={setUser} />}

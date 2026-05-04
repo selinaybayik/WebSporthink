@@ -224,24 +224,26 @@ export const addLearningPath = async (pathData) => {
 };
 
 // YÖNETİCİ: Tüm Departmana Toplu Eğitim Ata
-export const assignTrainingToDepartment = async (departman, egitimId) => {
+export const assignTrainingToDepartment = async (departman, egitimId, atayanId) => {
   const response = await fetch(`${BASE_URL}/api/admin/toplu-ata`, {
-    method: 'POST', 
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ departman, egitimId }),
+    body: JSON.stringify({ departman, egitimId, atayanId }),
   });
+
   const data = await response.json();
   if (!response.ok) throw new Error(data.message);
   return data;
 };
 
 // YÖNETİCİ: Seçili Kişilere Çoklu Eğitim Ata
-export const assignTrainingToMultipleUsers = async (userIds, egitimId) => {
+export const assignTrainingToMultipleUsers = async (userIds, egitimId, atayanId) => {
   const response = await fetch(`${BASE_URL}/api/admin/coklu-ata`, {
-    method: 'POST', 
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userIds, egitimId }),
+    body: JSON.stringify({ userIds, egitimId, atayanId }),
   });
+
   const data = await response.json();
   if (!response.ok) throw new Error(data.message);
   return data;
@@ -1163,15 +1165,17 @@ export const updateInstructorCompetencies = async (
   uzmanlikSeviyesi,
   yetkinlikler
 ) => {
-  const response = await fetch(`${BASE_URL}/api/egitmen/yetkinlikler`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      egitmenId,
-      uzmanlikSeviyesi,
-      yetkinlikler,
-    }),
-  });
+  const response = await fetch(
+    `${BASE_URL}/api/egitmen/yetkinlikler/${egitmenId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uzmanlikSeviyesi,
+        yetkinlikler,
+      }),
+    }
+  );
 
   const data = await response.json();
 
@@ -1391,6 +1395,131 @@ export const getAdminAnnouncements = async (adminId) => {
 
   if (!response.ok) {
     throw new Error(data.message || "Yönetici duyuruları alınamadı.");
+  }
+
+  return data;
+};
+export const getInstructorSurveyAnalysis = async (egitmenId) => {
+  const response = await fetch(
+    `${BASE_URL}/api/egitmen/anket-analiz/${egitmenId}`
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Anket analizi alınamadı.");
+  }
+
+  return data;
+};
+export const deleteInstructorSurvey = async (anketId) => {
+  const response = await fetch(`${BASE_URL}/api/egitmen/anket/${anketId}`, {
+    method: "DELETE",
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Anket silinemedi.");
+  }
+
+  return data;
+};
+export const getInstructorPastAnnouncements = async (egitmenId) => {
+  const response = await fetch(
+    `${BASE_URL}/api/egitmen/gecmis-duyurular/${egitmenId}`
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Geçmiş duyurular alınamadı.");
+  }
+
+  return data;
+};
+export const uploadCoverImage = async (file) => {
+  const formData = new FormData();
+  formData.append("kapak", file);
+
+  const response = await fetch(`${BASE_URL}/api/upload-kapak`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Kapak görseli yüklenemedi.");
+  }
+
+  return data;
+};
+export const getAdminProfile = async (adminId) => {
+  const res = await fetch(`${BASE_URL}/api/admin/profil/${adminId}`);
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Profil bilgisi alınamadı.");
+  }
+
+  return data;
+};
+
+export const updateAdminProfile = async (adminId, profileData) => {
+  const res = await fetch(`${BASE_URL}/api/admin/profil/${adminId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profileData),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Profil güncellenemedi.");
+  }
+
+  return data;
+};
+
+export const updateAdminPassword = async (adminId, passwordData) => {
+  const res = await fetch(`${BASE_URL}/api/admin/sifre-guncelle/${adminId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(passwordData),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Şifre güncellenemedi.");
+  }
+
+  return data;
+};
+export const createEducationQuestion = async ({
+  egitimId,
+  kullaniciId,
+  baslik,
+  soruMetni,
+}) => {
+  const response = await fetch(`${BASE_URL}/api/egitim-sorulari`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      egitim_id: egitimId,
+      kullanici_id: kullaniciId,
+      baslik,
+      soru_metni: soruMetni,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Soru gönderilemedi.");
   }
 
   return data;

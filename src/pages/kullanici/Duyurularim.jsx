@@ -64,24 +64,7 @@ export default function Duyurularim({ user, setUser }) {
       searchPlaceholder="Duyurularda ara..."
     >
       <main className="flex-1 bg-[#F8FAFC] min-h-screen">
-        <header className="h-20 bg-white/90 border-b border-slate-200 flex items-center justify-between px-10 sticky top-0 z-10">
-          <div className="w-[420px] h-12 bg-slate-100 rounded-2xl flex items-center px-4 gap-3 border border-slate-200">
-            <Search size={20} className="text-slate-400" />
-            <input
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Duyurularda ara..."
-              className="bg-transparent outline-none w-full text-sm font-bold text-slate-600"
-            />
-          </div>
-
-          <button
-            onClick={loadAnnouncements}
-            className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/25"
-          >
-            <Bell size={22} />
-          </button>
-        </header>
+    
 
         <section className="px-10 py-9">
           <div className="flex items-end justify-between mb-8">

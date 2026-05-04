@@ -4,7 +4,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 
 const BASE_URL = "http://10.204.138.92:4000";
 
-export default function QuizScreen({ user, setUser }) {
+export default function EgitmenQuizScreen({ user }) {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
@@ -25,17 +25,20 @@ export default function QuizScreen({ user, setUser }) {
       setLoading(false);
       return;
     }
+
     fetchQuestions();
   }, [egitimId]);
 
   const fetchQuestions = async () => {
     try {
       setLoading(true);
+
       const res = await fetch(`${BASE_URL}/api/quiz/${egitimId}`);
       const data = await res.json();
+
       setQuestions(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Quiz soru hatası:", err);
+      console.error("Eğitmen quiz soru hatası:", err);
       setQuestions([]);
     } finally {
       setLoading(false);
@@ -45,6 +48,7 @@ export default function QuizScreen({ user, setUser }) {
   const finishQuiz = async (finalScore, total) => {
     try {
       setFinishing(true);
+
       const res = await fetch(`${BASE_URL}/api/quiz-tamamla`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -56,18 +60,24 @@ export default function QuizScreen({ user, setUser }) {
           kazanilanXp: xp,
         }),
       });
+
       const data = await res.json();
+
       if (!res.ok) {
         alert(data.message || "Quiz tamamlanamadı.");
-        navigate(-1);
+        navigate(`/egitmen/ogrenme-detay/${egitimId}`);
         return;
       }
-      alert(data.message || "Quiz tamamlandı. Sertifikan Sertifikalarım sayfasına eklendi.");
 
-navigate("/user/sertifikalar");
+      alert(
+        data.message ||
+          "Quiz tamamlandı. Sertifikan Eğitmen Sertifikalarım sayfasına eklendi."
+      );
+
+      navigate("/egitmen/sertifikalar");
     } catch (err) {
       alert("Bir hata oluştu.");
-      navigate(-1);
+      navigate(`/egitmen/ogrenme-detay/${egitimId}`);
     } finally {
       setFinishing(false);
     }
@@ -75,6 +85,7 @@ navigate("/user/sertifikalar");
 
   const handleAnswer = (key) => {
     if (selectedChoice || finishing) return;
+
     setSelectedChoice(key);
 
     const soru = questions[currentIndex];
@@ -82,13 +93,15 @@ navigate("/user/sertifikalar");
 
     const dogru = String(soru.dogru_cevap || "").toUpperCase().trim();
     const secim = String(key || "").toUpperCase().trim();
+
     const isCorrect = secim === dogru;
     const newScore = isCorrect ? score + 1 : score;
+
     if (isCorrect) setScore(newScore);
 
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
-        setCurrentIndex((p) => p + 1);
+        setCurrentIndex((prev) => prev + 1);
         setSelectedChoice(null);
       } else {
         finishQuiz(newScore, questions.length);
@@ -96,7 +109,6 @@ navigate("/user/sertifikalar");
     }, 600);
   };
 
-  // ── LOADING ──────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -108,46 +120,51 @@ navigate("/user/sertifikalar");
     );
   }
 
-  // ── EĞİTİM ID YOK ────────────────────────────────────
   if (!egitimId) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
         <div className="bg-white rounded-3xl p-10 text-center shadow border border-slate-200 max-w-md">
-          <h1 className="text-2xl font-black text-slate-950 mb-3">Eğitim bulunamadı</h1>
+          <h1 className="text-2xl font-black text-slate-950 mb-3">
+            Eğitim bulunamadı
+          </h1>
+
           <button
-            onClick={() => navigate("/user/egitimler")}
+            onClick={() => navigate("/egitmen/ogrenme-alanim")}
             className="mt-4 px-6 py-3 bg-red-600 text-white rounded-2xl font-black"
           >
-            Eğitimlere Dön
+            Öğrenme Alanıma Dön
           </button>
         </div>
       </div>
     );
   }
 
-  // ── SORU YOK ─────────────────────────────────────────
   if (questions.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
         <div className="bg-white rounded-3xl p-10 text-center shadow border border-slate-200 max-w-md">
           <Trophy size={60} className="text-yellow-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-black text-slate-950 mb-3">Quiz Tanımlanmamış</h1>
+
+          <h1 className="text-2xl font-black text-slate-950 mb-3">
+            Quiz Tanımlanmamış
+          </h1>
+
           <p className="text-slate-500 font-semibold mb-6">
-            Bu eğitime henüz sınav eklenmemiş. XP'yi direkt alabilirsin.
+            Bu eğitime henüz quiz eklenmemiş. Eğitimi direkt tamamlayabilirsin.
           </p>
+
           <button
             onClick={() => finishQuiz(1, 1)}
             disabled={finishing}
             className="w-full py-4 bg-red-600 text-white rounded-2xl font-black disabled:opacity-60"
           >
-            {finishing ? "İşleniyor..." : "XP Al ve Bitir"}
+            {finishing ? "İşleniyor..." : "Tamamla ve Sertifika Al"}
           </button>
         </div>
       </div>
     );
   }
 
-  // ── ANA QUIZ ─────────────────────────────────────────
   const soru = questions[currentIndex];
   if (!soru) return null;
 
@@ -155,14 +172,13 @@ navigate("/user/sertifikalar");
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* HEADER */}
       <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-20">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(`/egitmen/ogrenme-detay/${egitimId}`)}
           className="flex items-center gap-2 text-slate-600 font-black hover:text-red-600 transition"
         >
           <ArrowLeft size={20} />
-          Geri Dön
+          Eğitime Dön
         </button>
 
         <span className="px-4 py-2 bg-red-50 text-red-600 rounded-2xl font-black text-sm">
@@ -178,12 +194,14 @@ navigate("/user/sertifikalar");
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
-        {/* İLERLEME */}
         <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <p className="font-black text-slate-950">{egitimBaslik}</p>
-            <span className="text-red-600 font-black text-sm">%{progress}</span>
+            <span className="text-red-600 font-black text-sm">
+              %{progress}
+            </span>
           </div>
+
           <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-red-600 rounded-full transition-all duration-500"
@@ -192,17 +210,16 @@ navigate("/user/sertifikalar");
           </div>
         </div>
 
-        {/* SORU */}
         <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm">
           <p className="text-red-600 font-black text-xs tracking-[3px] mb-4">
             SORU {currentIndex + 1}
           </p>
+
           <h2 className="text-2xl font-black text-slate-950 leading-9">
             {soru.soru_metni}
           </h2>
         </div>
 
-        {/* SEÇENEKLER */}
         <div className="space-y-3">
           {["a", "b", "c", "d"].map((k) => {
             const metin = soru[`secenek_${k}`];
@@ -240,22 +257,35 @@ navigate("/user/sertifikalar");
                 >
                   {KEY}
                 </div>
-                <span className="flex-1 font-semibold text-slate-800">{metin}</span>
-                <ChevronRight size={18} className="text-slate-300 flex-shrink-0" />
+
+                <span className="flex-1 font-semibold text-slate-800">
+                  {metin}
+                </span>
+
+                <ChevronRight
+                  size={18}
+                  className="text-slate-300 flex-shrink-0"
+                />
               </button>
             );
           })}
         </div>
 
-        {/* SKOR */}
         <div className="bg-slate-950 text-white rounded-[2rem] p-6 flex items-center justify-between">
           <div>
-            <p className="text-slate-400 font-black text-xs tracking-[3px] mb-1">DOĞRU CEVAP</p>
+            <p className="text-slate-400 font-black text-xs tracking-[3px] mb-1">
+              DOĞRU CEVAP
+            </p>
+
             <p className="text-3xl font-black">
               {score}
-              <span className="text-slate-500 text-lg"> / {questions.length}</span>
+              <span className="text-slate-500 text-lg">
+                {" "}
+                / {questions.length}
+              </span>
             </p>
           </div>
+
           <Trophy size={36} className="text-amber-400" />
         </div>
       </main>

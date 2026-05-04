@@ -30,6 +30,7 @@ export default function EgitmenEgitimDetay({ user }) {
   const navigate = useNavigate();
   const params = useParams();
   const location = useLocation();
+  const adminMode = location.state?.adminMode;
 
   const egitimId = location.state?.egitimId || location.state?.id || params.id;
 
@@ -128,12 +129,21 @@ export default function EgitmenEgitimDetay({ user }) {
         </div>
       </section>
 
-      <section style={styles.hero}>
-        <div style={styles.heroIcon}>
-          <BookOpen size={44} color={RED} />
-        </div>
+     <section style={styles.hero}>
 
-        <div style={{ flex: 1 }}>
+  {course?.kapak_url ? (
+    <img
+      src={course.kapak_url}
+      alt={courseTitle}
+      style={styles.heroCover}
+    />
+  ) : (
+    <div style={styles.heroIcon}>
+      <BookOpen size={44} color={RED} />
+    </div>
+  )}
+
+  <div style={{ flex: 1 }}>
           <div style={styles.badgeRow}>
             <span style={styles.categoryBadge}>
               {String(course?.category || "GENEL").toUpperCase()}
@@ -495,6 +505,14 @@ const styles = {
     boxShadow: "0 14px 30px rgba(237,0,21,0.10)",
     flexShrink: 0,
   },
+   heroCover: {
+  width: 120,
+  height: 120,
+  borderRadius: 32,
+  objectFit: "cover",
+  flexShrink: 0,
+  boxShadow: "0 14px 30px rgba(237,0,21,0.10)",
+},
 
   badgeRow: {
     display: "flex",
@@ -696,7 +714,6 @@ const styles = {
     flexDirection: "column",
     gap: 16,
   },
-
   moduleBlock: {
     background: "#F8FAFC",
     border: "1px solid #EEF2F7",

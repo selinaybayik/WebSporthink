@@ -2,9 +2,6 @@ import React, { useState } from "react";
 import {
   ClipboardList,
   Send,
-  Users,
-  Building2,
-  GraduationCap,
   Plus,
   Trash2,
   BarChart3,
@@ -15,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { assignInstructorSurvey } from "../../services/api";
+import { useNavigate } from "react-router-dom";
 
 const RED = "#E30613";
 const DARK = "#081229";
@@ -23,6 +21,7 @@ const BG = "#F4F5F7";
 
 export default function EgitmenAnketYonetimi({ user }) {
   const [hedefKitle, setHedefKitle] = useState("my_students");
+  const navigate = useNavigate();
   const [baslik, setBaslik] = useState("");
   const [sorular, setSorular] = useState([
     "Bu eğitim içeriğini faydalı buldunuz mu?",
@@ -103,13 +102,17 @@ export default function EgitmenAnketYonetimi({ user }) {
           </div>
         </div>
 
-        <div style={styles.heroBadge}>
-          <BarChart3 size={23} color={RED} />
-          <div>
-            <strong>Geri Bildirim Analizi</strong>
-            <span>Cevaplar raporlama ekranlarında analiz edilir</span>
-          </div>
-        </div>
+       <button
+  type="button"
+  style={styles.heroBadge}
+  onClick={() => navigate("/egitmen/anket-analiz")}
+>
+  <BarChart3 size={23} color={RED} />
+  <div>
+    <strong>Geri Bildirim Analizi</strong>
+    <span>Cevap analizlerini görüntüle</span>
+  </div>
+</button>
       </section>
 
       <main style={styles.contentGrid}>
@@ -125,33 +128,7 @@ export default function EgitmenAnketYonetimi({ user }) {
             </div>
           </div>
 
-          <label style={styles.label}>HEDEF KİTLE</label>
-
-          <div style={styles.targetGrid}>
-            <TargetButton
-              active={hedefKitle === "my_students"}
-              icon={GraduationCap}
-              title="Benim Öğrencilerim"
-              text="Eğitimlerine kayıtlı kişiler"
-              onClick={() => setHedefKitle("my_students")}
-            />
-
-            <TargetButton
-              active={hedefKitle === "department"}
-              icon={Building2}
-              title="Departmanım"
-              text="Aynı departmandaki kişiler"
-              onClick={() => setHedefKitle("department")}
-            />
-
-            <TargetButton
-              active={hedefKitle === "all"}
-              icon={Users}
-              title="Tüm Kullanıcılar"
-              text="Sistemdeki tüm kullanıcılar"
-              onClick={() => setHedefKitle("all")}
-            />
-          </div>
+          
 
           <label style={styles.label}>ANKET BAŞLIĞI</label>
 
@@ -237,12 +214,8 @@ export default function EgitmenAnketYonetimi({ user }) {
                 </h4>
 
                 <p style={styles.surveyTarget}>
-                  {hedefKitle === "my_students"
-                    ? "Benim Öğrencilerim"
-                    : hedefKitle === "department"
-                    ? "Departmanım"
-                    : "Tüm Kullanıcılar"}
-                </p>
+  Benim Öğrencilerim
+</p>
               </div>
             </div>
 
@@ -364,16 +337,17 @@ const styles = {
     maxWidth: 720,
   },
   heroBadge: {
-    backgroundColor: "#FFF1F2",
-    color: DARK,
-    borderRadius: 22,
-    padding: "16px 18px",
-    border: "1px solid #FFE4E6",
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    minWidth: 300,
-  },
+  backgroundColor: "#FFF1F2",
+  color: DARK,
+  borderRadius: 22,
+  padding: "16px 18px",
+  border: "1px solid #FFE4E6",
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  minWidth: 300,
+  cursor: "pointer",
+},
 
   contentGrid: {
     display: "grid",
@@ -607,11 +581,11 @@ const styles = {
     fontWeight: 950,
   },
   surveyPreview: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 28,
-    padding: 16,
-    border: "1px solid rgba(255,255,255,0.08)",
-  },
+  backgroundColor: "rgba(255,255,255,0.07)",
+  borderRadius: 28,
+  padding: 16,
+  border: "1px solid rgba(255,255,255,0.08)",
+},
   surveyHeader: {
     backgroundColor: "#fff",
     borderRadius: 24,

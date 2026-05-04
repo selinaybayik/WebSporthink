@@ -1,31 +1,31 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
+  Award,
   Bell,
   CheckCircle2,
-  PlayCircle,
-  Lock,
-  FileText,
-  Download,
-  Trophy,
-  Star,
-  Mail,
   ChevronRight,
   Clock,
-  ShieldCheck,
+  Download,
+  Eye,
+  FileText,
+  Mail,
+  PlayCircle,
   Search,
-  Award,
+  ShieldCheck,
+  Star,
+  Trophy,
 } from "lucide-react";
 
-import { getInstructorPreview, publishTraining } from "../../services/api";
+import { getInstructorPreview, publishTraining } from "../services/api";
 
 const RED = "#E5252A";
 const DARK = "#071330";
 const MUTED = "#94A3B8";
 const BG = "#F6F8FC";
 
-export default function EgitimOnizleme() {
+export default function AdminEgitimOnizleme() {
   const navigate = useNavigate();
   const params = useParams();
   const location = useLocation();
@@ -54,6 +54,7 @@ export default function EgitimOnizleme() {
         params,
         state: location.state,
       });
+
       return null;
     }
 
@@ -79,10 +80,8 @@ export default function EgitimOnizleme() {
           duration: draft.duration || draft.sure || "0 dk",
           xp: draft.xp || draft.xp_degeri || 0,
           category: draft.category || draft.kategori || "Genel",
-          level: draft.level || "Başlangıç",
           instructor: {
             avatarEmoji: "🎓",
-            label: "Eğitim Uzmanı",
             name: "Sporthink Akademi",
             role: "Eğitim Uzmanı",
           },
@@ -90,7 +89,7 @@ export default function EgitimOnizleme() {
             draft.modules?.map((item, index) => ({
               id: item.id || index,
               title: item.title || item.baslik || `Video ${index + 1}`,
-              duration: "30",
+              duration: item.duration || item.sure || "30 dk",
               status: "preview",
             })) || [],
           resources:
@@ -121,22 +120,21 @@ export default function EgitimOnizleme() {
         (modul.contents || []).forEach((content) => {
           flatContents.push({
             ...content,
-            moduleTitle: modul.baslik,
+            moduleTitle: modul.baslik || modul.title,
           });
         });
       });
 
       const formattedTraining = {
+        id: egitimId,
         title: data.course?.title || data.course?.baslik || "Eğitim Önizleme",
         coverUrl: data.course?.kapak_url || data.course?.coverUrl || null,
         description: data.course?.desc || data.course?.aciklama || "",
         duration: data.course?.duration || data.course?.sure || "0 dk",
         xp: data.course?.xp || data.course?.xp_degeri || 0,
         category: data.course?.category || data.course?.kategori || "Genel",
-        level: "Başlangıç",
         instructor: {
           avatarEmoji: "👨‍🏫",
-          label: "Eğitim Uzmanı",
           name: "Sporthink Akademi",
           role: "Eğitim Uzmanı",
         },
@@ -144,17 +142,17 @@ export default function EgitimOnizleme() {
           .filter((item) => Number(item.tip_id) === 1)
           .map((item, index) => ({
             id: item.icerik_id || item.id || index,
-            title: item.baslik || `Video ${index + 1}`,
-            duration: "30",
+            title: item.baslik || item.title || `Video ${index + 1}`,
+            duration: item.sure_bilgisi || item.duration || "30 dk",
             status: "preview",
           })),
         resources: flatContents
           .filter((x) => Number(x.tip_id) === 2 || Number(x.tip_id) === 3)
           .map((res, index) => ({
             id: res.icerik_id || res.id || index,
-            title: res.baslik || "Kaynak",
+            title: res.baslik || res.title || "Kaynak",
             type: Number(res.tip_id) === 2 ? "PDF" : "Metin",
-            size: Number(res.tip_id) === 2 ? "Kaynak" : "Kaynak",
+            size: res.sure_bilgisi || "Kaynak",
           })),
         quiz: data.quiz || null,
         isDraftPreview: false,
@@ -195,6 +193,23 @@ export default function EgitimOnizleme() {
     }
   };
 
+  const goToEditContent = () => {
+    const egitimId = getValidEgitimId();
+
+    if (!egitimId) {
+      alert("Eğitim ID bulunamadı.");
+      return;
+    }
+
+    navigate(`/admin/icerik-ekle/${egitimId}`, {
+      state: {
+        egitimId,
+        id: egitimId,
+        egitim: training || egitim,
+      },
+    });
+  };
+
   const totalModules = training?.modules?.length || 0;
   const completedModules = totalModules;
   const progress = totalModules > 0 ? 100 : 0;
@@ -220,6 +235,11 @@ export default function EgitimOnizleme() {
           <span>Eğitim detayında ara...</span>
         </div>
 
+        <button style={styles.previewBadge}>
+          <Eye size={18} />
+          Admin Önizleme
+        </button>
+
         <button style={styles.bellButton}>
           <Bell size={20} color="#fff" />
         </button>
@@ -229,26 +249,16 @@ export default function EgitimOnizleme() {
         <div style={styles.leftCol}>
           <section style={styles.heroCard}>
             {training.coverUrl ? (
-  <img
-    src={training.coverUrl}
-    alt={training.title}
-    style={styles.heroCover}
-  />
-) : (
-  <div style={styles.heroIcon}>
-   {training.coverUrl ? (
-  <img
-    src={training.coverUrl}
-    alt={training.title}
-    style={styles.heroCover}
-  />
-) : (
-  <div style={styles.heroIcon}>
-    <ShieldCheck size={62} color={RED} />
-  </div>
-)}
-  </div>
-)}
+              <img
+                src={training.coverUrl}
+                alt={training.title}
+                style={styles.heroCover}
+              />
+            ) : (
+              <div style={styles.heroIcon}>
+                <ShieldCheck size={62} color={RED} />
+              </div>
+            )}
 
             <div style={styles.heroContent}>
               <div style={styles.chipRow}>
@@ -257,12 +267,30 @@ export default function EgitimOnizleme() {
               </div>
 
               <h1 style={styles.title}>{training.title}</h1>
-              <p style={styles.desc}>{training.description || "Eğitim açıklaması bulunmuyor."}</p>
+
+              <p style={styles.desc}>
+                {training.description || "Eğitim açıklaması bulunmuyor."}
+              </p>
 
               <div style={styles.infoGrid}>
-                <InfoBox icon={Clock} label="Tahmini Süre" value={training.duration} />
-                <InfoBox icon={CheckCircle2} label="Modül Sayısı" value={totalModules} />
-                <InfoBox icon={Star} label="Kazanılacak XP" value={`${training.xp} XP`} red />
+                <InfoBox
+                  icon={Clock}
+                  label="Tahmini Süre"
+                  value={training.duration}
+                />
+
+                <InfoBox
+                  icon={CheckCircle2}
+                  label="Modül Sayısı"
+                  value={totalModules}
+                />
+
+                <InfoBox
+                  icon={Star}
+                  label="Kazanılacak XP"
+                  value={`${training.xp} XP`}
+                  red
+                />
               </div>
             </div>
           </section>
@@ -287,12 +315,14 @@ export default function EgitimOnizleme() {
                     <h3 style={styles.moduleTitle}>
                       {index + 1}. {module.title}
                     </h3>
+
                     <p style={styles.moduleMeta}>
-                      <Clock size={14} /> {module.duration}
+                      <Clock size={14} />
+                      {module.duration}
                     </p>
                   </div>
 
-                  <span style={styles.doneBadge}>Tamamlandı</span>
+                  <span style={styles.doneBadge}>Önizleme</span>
                   <ChevronRight size={20} color={MUTED} />
                 </button>
               ))
@@ -337,6 +367,7 @@ export default function EgitimOnizleme() {
                 <h2 style={styles.quizWideTitle}>
                   {training.quiz.baslik || "Eğitim Sonu Testi"}
                 </h2>
+
                 <p style={styles.quizWideSub}>
                   {training.quiz.soru_sayisi || 1} Soru • Geçme Notu: %
                   {training.quiz.gecme_notu || 70}
@@ -345,6 +376,7 @@ export default function EgitimOnizleme() {
             ) : (
               <>
                 <h2 style={styles.quizWideTitle}>Quiz Henüz Eklenmedi</h2>
+
                 <p style={styles.quizWideSub}>
                   Eğitmen henüz değerlendirme quiz’i oluşturmadı.
                 </p>
@@ -357,8 +389,9 @@ export default function EgitimOnizleme() {
               🚀 YAYINA AL
             </button>
 
-            <button style={styles.editButton} onClick={() => navigate(-1)}>
-              DÜZENLEMEYE GERİ DÖN <ChevronRight size={18} />
+            <button style={styles.editButton} onClick={goToEditContent}>
+              İÇERİĞİ DÜZENLE
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>
@@ -366,7 +399,9 @@ export default function EgitimOnizleme() {
         <aside style={styles.rightCol}>
           <section style={styles.progressPanel}>
             <p style={styles.panelLabel}>İLERLEME DURUMU</p>
+
             <h2 style={styles.progressTitle}>%{progress} Tamamlandı</h2>
+
             <p style={styles.progressText}>
               {completedModules} / {totalModules} modül
             </p>
@@ -376,8 +411,8 @@ export default function EgitimOnizleme() {
             </div>
 
             <div style={styles.successBox}>
-              <strong>Tebrikler!</strong>
-              <span>Tüm modülleri başarıyla tamamladınız.</span>
+              <strong>Önizleme Modu</strong>
+              <span>Bu ekran kullanıcının göreceği eğitim deneyimini simüle eder.</span>
             </div>
 
             <button style={styles.quizButton}>
@@ -390,7 +425,10 @@ export default function EgitimOnizleme() {
             <p style={styles.sideLabel}>EĞİTİM UZMANI</p>
 
             <div style={styles.instructorRow}>
-              <div style={styles.instructorAvatar}>{training.instructor.avatarEmoji}</div>
+              <div style={styles.instructorAvatar}>
+                {training.instructor.avatarEmoji}
+              </div>
+
               <div>
                 <h3 style={styles.instructorName}>{training.instructor.name}</h3>
                 <p style={styles.instructorRole}>{training.instructor.role}</p>
@@ -408,11 +446,14 @@ export default function EgitimOnizleme() {
               <div style={styles.quizSmallIcon}>
                 <Trophy size={28} color={RED} />
               </div>
+
               <div>
                 <p style={styles.sideLabel}>EĞİTİM SONU TESTİ</p>
+
                 <h3 style={styles.smallTitle}>
                   {training.quiz?.baslik || "Eğitim sonu testi"}
                 </h3>
+
                 <p style={styles.instructorRole}>
                   {training.quiz?.soru_sayisi || 1} Soru • Geçme Notu: %
                   {training.quiz?.gecme_notu || 70}
@@ -447,9 +488,13 @@ function InfoBox({ icon: Icon, label, value, red }) {
       <div style={styles.infoIcon}>
         <Icon size={20} color={red ? RED : "#475569"} />
       </div>
+
       <div>
         <p style={styles.infoLabel}>{label}</p>
-        <h3 style={{ ...styles.infoValue, color: red ? RED : DARK }}>{value}</h3>
+
+        <h3 style={{ ...styles.infoValue, color: red ? RED : DARK }}>
+          {value}
+        </h3>
       </div>
     </div>
   );
@@ -518,8 +563,22 @@ const styles = {
     fontWeight: 700,
   },
 
-  bellButton: {
+  previewBadge: {
     marginLeft: "auto",
+    height: 46,
+    padding: "0 18px",
+    borderRadius: 15,
+    border: "1px solid #E2E8F0",
+    backgroundColor: "#fff",
+    color: DARK,
+    fontWeight: 900,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    cursor: "pointer",
+  },
+
+  bellButton: {
     width: 46,
     height: 46,
     borderRadius: 15,
@@ -574,6 +633,15 @@ const styles = {
     backgroundColor: "#FFF1F2",
     display: "grid",
     placeItems: "center",
+  },
+
+  heroCover: {
+    width: 136,
+    height: 136,
+    borderRadius: 32,
+    objectFit: "cover",
+    flexShrink: 0,
+    boxShadow: "0 18px 36px rgba(15,23,42,0.16)",
   },
 
   heroContent: {
@@ -728,14 +796,6 @@ const styles = {
     fontWeight: 950,
     color: DARK,
   },
-  heroCover: {
-  width: 136,
-  height: 136,
-  borderRadius: 32,
-  objectFit: "cover",
-  flexShrink: 0,
-  boxShadow: "0 18px 36px rgba(15,23,42,0.16)",
-},
 
   moduleMeta: {
     margin: "8px 0 0",
@@ -773,6 +833,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 16,
+    marginBottom: 12,
   },
 
   resourceIcon: {

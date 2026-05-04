@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   ChevronRight,
   FileQuestion,
   BookOpen,
+  X,
 } from "lucide-react";
 
 import { runAiStudio } from "../../services/api";
@@ -21,23 +22,25 @@ const BG = "#F4F5F7";
 
 export default function AiStudyo({ user }) {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const [loading, setLoading] = useState(false);
   const [aiResult, setAiResult] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const aiTools = [
     {
       type: "quiz",
       title: "PDF'DEN QUIZ ÜRET",
-      desc: "Dokümanı analiz ederek çoktan seçmeli sorular oluştur.",
+      desc: "Seçilen doküman bilgilerine göre çoktan seçmeli sorular oluştur.",
       icon: FileQuestion,
       color: "#F59E0B",
     },
     {
       type: "summary",
       title: "DERS ÖZETİ ÇIKAR",
-      desc: "Uzun eğitim içeriklerini kısa öğrenme notlarına dönüştür.",
+      desc: "Eğitim içeriğini kısa öğrenme notlarına dönüştür.",
       icon: BookOpen,
       color: "#10B981",
     },
@@ -50,6 +53,21 @@ export default function AiStudyo({ user }) {
     },
   ];
 
+  const buildPrompt = () => {
+    if (selectedFile) {
+      return `${prompt || "Seçilen eğitim dokümanına göre içerik üret."}
+
+Seçilen doküman bilgileri:
+- Dosya adı: ${selectedFile.name}
+- Dosya tipi: ${selectedFile.type || "Bilinmiyor"}
+- Dosya boyutu: ${(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+
+Bu bilgilere göre eğitim içeriği, quiz, özet veya öğrenme akışı oluştur.`;
+    }
+
+    return prompt || "Kurumsal eğitim platformu için örnek içerik üret.";
+  };
+
   const handleFeature = async (type) => {
     try {
       setLoading(true);
@@ -57,7 +75,7 @@ export default function AiStudyo({ user }) {
 
       const result = await runAiStudio({
         type,
-        prompt: prompt || "Kurumsal eğitim platformu için örnek içerik üret.",
+        prompt: buildPrompt(),
         userContext: {
           name: user?.name || "Eğitmen",
           role: "EGITMEN",
@@ -71,6 +89,48 @@ export default function AiStudyo({ user }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      window.alert("Lütfen PDF, Word veya TXT formatında dosya seç.");
+      e.target.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleStartDocumentAi = () => {
+    if (!selectedFile) {
+      window.alert("Önce bir doküman seçmelisin.");
+      return;
+    }
+
+    handleFeature("document");
   };
 
   return (
@@ -103,7 +163,10 @@ export default function AiStudyo({ user }) {
               return (
                 <button
                   key={tool.title}
-                  style={styles.toolCard}
+                  style={{
+                    ...styles.toolCard,
+                    ...(loading ? styles.disabledButton : {}),
+                  }}
                   onClick={() => handleFeature(tool.type)}
                   disabled={loading}
                 >
@@ -166,23 +229,62 @@ export default function AiStudyo({ user }) {
           </div>
 
           <h2 style={styles.uploadTitle}>
-            Döküman Yükleyerek AI Analizi Başlat
+            Döküman Seçerek AI Analizi Başlat
           </h2>
 
           <p style={styles.uploadDesc}>
-            PDF, Word veya eğitim notlarını yükleyerek AI destekli quiz, özet
-            ve öğrenme akışı oluştur.
+            PDF, Word veya eğitim notlarını seçerek AI destekli quiz, özet ve
+            öğrenme akışı oluştur.
           </p>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.txt"
+            style={{ display: "none" }}
+            onChange={handleFileSelect}
+          />
+
           <button
-            style={styles.uploadButton}
-            onClick={() =>
-              window.alert("Dosya yükleme sistemi sonraki aşamada bağlanacak.")
-            }
+            style={{
+              ...styles.uploadButton,
+              ...(loading ? styles.disabledButton : {}),
+            }}
+            onClick={handleUploadClick}
+            disabled={loading}
           >
-            <FileText size={18} color="#fff" />
-            DÖKÜMAN YÜKLE
+            <Upload size={18} color="#fff" />
+            DÖKÜMAN SEÇ
           </button>
+
+          {selectedFile ? (
+            <div style={styles.selectedFileBox}>
+              <FileText size={21} color={RED} />
+
+              <div style={styles.selectedFileInfo}>
+                <p style={styles.selectedFileName}>{selectedFile.name}</p>
+                <p style={styles.selectedFileMeta}>
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB ·{" "}
+                  {selectedFile.type || "Dosya"}
+                </p>
+              </div>
+
+              <button style={styles.removeFileButton} onClick={handleRemoveFile}>
+                <X size={16} color={DARK} />
+              </button>
+
+              <button
+                style={{
+                  ...styles.analyzeButton,
+                  ...(loading ? styles.disabledButton : {}),
+                }}
+                onClick={handleStartDocumentAi}
+                disabled={loading}
+              >
+                {loading ? "ANALİZ..." : "AI ANALİZ ET"}
+              </button>
+            </div>
+          ) : null}
         </section>
       </main>
     </div>
@@ -398,5 +500,57 @@ const styles = {
     fontWeight: 900,
     letterSpacing: 1,
     cursor: "pointer",
+  },
+  selectedFileBox: {
+    marginTop: 20,
+    backgroundColor: "#F8FAFC",
+    border: "1px solid #EEF2F7",
+    borderRadius: 22,
+    padding: 14,
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  selectedFileInfo: {
+    flex: 1,
+    textAlign: "left",
+    minWidth: 0,
+  },
+  selectedFileName: {
+    color: DARK,
+    fontSize: 13,
+    fontWeight: 900,
+    margin: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  selectedFileMeta: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: 700,
+    margin: "4px 0 0",
+  },
+  removeFileButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    border: "1px solid #E2E8F0",
+    backgroundColor: "#fff",
+    display: "grid",
+    placeItems: "center",
+    cursor: "pointer",
+  },
+  analyzeButton: {
+    height: 40,
+    borderRadius: 14,
+    border: "none",
+    backgroundColor: DARK,
+    color: "#fff",
+    padding: "0 14px",
+    fontSize: 11,
+    fontWeight: 900,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
 };

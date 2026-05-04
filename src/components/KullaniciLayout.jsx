@@ -25,6 +25,8 @@ export default function KullaniciLayout({
   setUser,
   activePath,
   searchPlaceholder = "Sistem içinde ara...",
+  searchValue = "",
+  onSearchChange,
   children,
 }) {
   const navigate = useNavigate();
@@ -175,10 +177,13 @@ export default function KullaniciLayout({
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 sticky top-0 z-40">
           <div className="w-[430px] h-12 bg-slate-100 rounded-2xl flex items-center px-4 gap-3">
             <Search size={20} className="text-slate-400" />
+
             <input
-              placeholder={searchPlaceholder}
-              className="bg-transparent outline-none w-full text-sm font-semibold text-slate-600"
-            />
+  value={searchValue}
+  onChange={(e) => onSearchChange?.(e.target.value)}
+  placeholder={searchPlaceholder}
+  className="bg-transparent outline-none w-full text-sm font-semibold text-slate-600"
+/>
           </div>
 
           <button

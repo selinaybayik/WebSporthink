@@ -5,7 +5,7 @@ import {
   Eye, Image, Rocket, Save, Sparkles, Star,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { createInstructorTraining } from "../../services/api";
+import { createInstructorTraining, uploadCoverImage } from "../../services/api";
 
 const categories = ["Satış", "İletişim", "Operasyon", "Kurumsal", "İK", "Teknik Eğitim"];
 const levels = ["Başlangıç", "Orta", "İleri"];
@@ -19,6 +19,8 @@ export default function EgitimOlustur({ user }) {
   const [level, setLevel]       = useState("Başlangıç");
   const [duration, setDuration] = useState("");
   const [xp, setXp]             = useState("50");
+  const [coverUrl, setCoverUrl] = useState("");
+const [coverUploading, setCoverUploading] = useState(false);
   const [saving, setSaving]     = useState(false);
 
   const getSeviyeId = () => {
@@ -26,6 +28,29 @@ export default function EgitimOlustur({ user }) {
     if (level === "İleri") return 3;
     return 1;
   };
+
+
+  const handleCoverSelect = async (e) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  try {
+    setCoverUploading(true);
+
+    const previewUrl = URL.createObjectURL(file);
+    setCoverUrl(previewUrl);
+
+    const result = await uploadCoverImage(file);
+    setCoverUrl(result.url);
+
+    alert("Kapak görseli yüklendi.");
+  } catch (error) {
+    alert(error.message || "Kapak görseli yüklenemedi.");
+  } finally {
+    setCoverUploading(false);
+  }
+};
 
   const saveTraining = async () => {
     if (!title.trim()) {
@@ -42,6 +67,7 @@ export default function EgitimOlustur({ user }) {
         sure:        duration || "0 dk",
         xp_degeri:   Number(xp) || 0,
         olusturan_id: user?.id,
+        kapak_url: coverUrl,
       });
       return result?.egitim || result;
     } catch (error) {
@@ -227,16 +253,49 @@ export default function EgitimOlustur({ user }) {
               </div>
 
               {/* KAPAK GÖRSELİ */}
-              <div>
-                <label className="block text-xs tracking-[3px] font-black text-slate-400 mb-3">
-                  KAPAK GÖRSELİ
-                </label>
-                <div className="h-52 rounded-[2rem] border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center">
-                  <Image size={42} className="text-slate-400" />
-                  <p className="mt-5 font-black text-slate-500">Kapak görseli ekle</p>
-                  <p className="text-sm text-slate-400 font-semibold mt-2">PNG / JPG yükleme sonra bağlanacak</p>
-                </div>
-              </div>
+<div>
+  <label className="block text-xs tracking-[3px] font-black text-slate-400 mb-3">
+    KAPAK GÖRSELİ
+  </label>
+
+  <label className="h-52 rounded-[2rem] border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-red-400 transition relative">
+    
+    <input
+      type="file"
+      accept="image/*"
+      onChange={handleCoverSelect}
+      className="hidden"
+    />
+
+    {coverUrl ? (
+      <img
+        src={coverUrl}
+        alt="Kapak Görseli"
+        className="w-full h-full object-cover"
+      />
+    ) : (
+      <>
+        <Image size={42} className="text-slate-400" />
+
+        <p className="mt-5 font-black text-slate-500">
+          Kapak görseli ekle
+        </p>
+
+        <p className="text-sm text-slate-400 font-semibold mt-2">
+          PNG / JPG seç
+        </p>
+      </>
+    )}
+
+    {coverUploading && (
+      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+        <p className="text-white font-black text-lg">
+          Yükleniyor...
+        </p>
+      </div>
+    )}
+  </label>
+</div>
             </div>
           </div>
 
