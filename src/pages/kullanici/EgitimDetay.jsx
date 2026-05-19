@@ -19,7 +19,12 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { completeModule, getTrainingDetail } from "../../services/api";
+import {
+  completeModule,
+  getTrainingDetail,
+  sendTrainingFeedback,
+  getMyTrainingFeedback,
+} from "../../services/api";
 import KullaniciLayout from "../../components/KullaniciLayout";
 
 export default function EgitimDetay({ user, setUser }) {
@@ -30,10 +35,61 @@ export default function EgitimDetay({ user, setUser }) {
   const [loading, setLoading] = useState(true);
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [selectedText, setSelectedText] = useState(null);
+const [showFeedback, setShowFeedback] = useState(false);
+const [feedbackPuan, setFeedbackPuan] = useState(5);
+const [feedbackYorum, setFeedbackYorum] = useState("");
+const [myFeedback, setMyFeedback] = useState(null);
+const [feedbackLoading, setFeedbackLoading] = useState(true);
 
   useEffect(() => {
     loadTraining();
   }, [id, user?.id]);
+  
+  useEffect(() => {
+  const loadFeedback = async () => {
+    if (!training?.id || !user?.id) return;
+
+    try {
+      setFeedbackLoading(true);
+
+      const data = await getMyTrainingFeedback(
+        training.id,
+        user.id
+      );
+
+      setMyFeedback(data || null);
+    } catch (error) {
+      console.log("Feedback yüklenemedi:", error.message);
+      setMyFeedback(null);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  loadFeedback();
+}, [training?.id, user?.id]);
+
+
+  
+useEffect(() => {
+  if (!training || !user) return;
+  if (feedbackLoading) return;
+
+  if (
+    Number(training.progress || 0) === 100 &&
+    myFeedback === null
+  ) {
+    setShowFeedback(true);
+  } else {
+    setShowFeedback(false);
+  }
+}, [
+  training?.id,
+  training?.progress,
+  myFeedback,
+  user?.id,
+  feedbackLoading,
+]);
 
   const loadTraining = async () => {
     try {
@@ -102,6 +158,12 @@ quizResetlendi:
   const certificateReady =
   Number(training?.progress || 0) === 100 &&
   !training?.sertifikaPasif;
+  const quizCompleted =
+  training?.durum === "tamamlandi";
+
+const quizButtonText = quizCompleted
+  ? "Quizi Tekrar Başlat"
+  : "Quiz’i Başlat";
 
   const goToLesson = (moduleId) => {
     navigate(`/user/ders-detay/${training.id}/${moduleId}`);
@@ -127,6 +189,28 @@ quizResetlendi:
     alert("Bu kaynağın bağlantısı veya içeriği bulunamadı.");
   };
 
+  const handleSubmitFeedback = async () => {
+  if (!training?.id || !user?.id) {
+    return alert("Eğitim veya kullanıcı bilgisi eksik.");
+  }
+
+  try {
+    await sendTrainingFeedback({
+      egitimId: training.id,
+      kullaniciId: user.id,
+      puan: Number(feedbackPuan),
+      yorum: feedbackYorum,
+    });
+
+
+    alert("Geri bildirimin kaydedildi. Teşekkürler!");
+    setShowFeedback(false);
+    setFeedbackYorum("");
+    setFeedbackPuan(5);
+  } catch (error) {
+    alert(error.message || "Geri bildirim gönderilemedi.");
+  }
+};
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -220,6 +304,30 @@ quizResetlendi:
                     <p className="text-slate-500 font-semibold leading-7 max-w-2xl">
                       {training.description}
                     </p>
+                    {myFeedback && (
+  <div className="mt-6 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-2xl">
+    <h3 className="text-lg font-black text-slate-950 mb-3">
+      Geribildirimim
+    </h3>
+
+    <div className="flex items-center gap-2 mb-2">
+      <span className="text-yellow-500 text-xl">⭐</span>
+      <span className="font-bold text-slate-800">
+        {myFeedback.puan} / 5
+      </span>
+    </div>
+
+    <p className="text-slate-600 font-semibold leading-7">
+      {myFeedback.yorum || "Yorum eklenmemiş"}
+    </p>
+
+    <p className="text-xs text-slate-400 mt-3 font-bold">
+      {myFeedback.created_at
+        ? new Date(myFeedback.created_at).toLocaleString("tr-TR")
+        : ""}
+    </p>
+  </div>
+)}
                     
                     {training.yenidenAtandi && (
   <div className="mb-5 bg-red-50 border border-red-200 rounded-2xl p-5">
@@ -482,18 +590,29 @@ else if (firstModule) {
                   </div>
                 </div>
 
-                {quizUnlocked ? (
-                  <button
-                    onClick={() => navigate(`/user/quiz/${training.id}`)}
-                    className="w-full border border-red-600 text-red-600 py-3 rounded-2xl font-black hover:bg-red-600 hover:text-white transition"
-                  >
-                    Quiz’i Başlat
-                  </button>
-                ) : (
-                  <p className="text-slate-400 font-bold text-sm">
-                    Quiz için tüm modülleri tamamlamalısın.
-                  </p>
-                )}
+                <button
+  disabled={!quizUnlocked}
+  onClick={() => {
+    if (quizUnlocked) {
+      navigate(`/user/quiz/${training.id}`);
+    }
+  }}
+  className={`w-full py-3 rounded-2xl font-black transition ${
+    quizUnlocked
+      ? "border border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+      : "bg-slate-100 text-slate-400 cursor-not-allowed"
+  }`}
+>
+  {!quizUnlocked
+    ? "Önce Eğitimi Tamamla"
+    : quizButtonText}
+</button>
+
+{!quizUnlocked && (
+  <p className="text-slate-400 font-bold text-sm mt-3 text-center">
+    Quiz açılması için tüm videolar tamamlanmalı.
+  </p>
+)}
               </div>)}
 
               <div
@@ -567,6 +686,64 @@ else if (firstModule) {
           </div>
         </Modal>
       )}
+      {showFeedback && (
+  <div className="fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center p-6">
+    <div className="w-full max-w-md bg-white rounded-[2rem] p-8 shadow-2xl">
+      <h2 className="text-2xl font-black text-slate-950 mb-2">
+        Eğitim Değerlendirme
+      </h2>
+
+      <p className="text-slate-500 font-semibold mb-6">
+        “{training?.title}” eğitimi hakkında geri bildirim bırak.
+      </p>
+
+      <label className="block text-xs font-black text-slate-400 tracking-widest mb-2">
+        PUAN
+      </label>
+
+      <select
+        value={feedbackPuan}
+        onChange={(e) => setFeedbackPuan(e.target.value)}
+        className="w-full mb-5 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none"
+      >
+        <option value="5">5 - Çok iyi</option>
+        <option value="4">4 - İyi</option>
+        <option value="3">3 - Orta</option>
+        <option value="2">2 - Zayıf</option>
+        <option value="1">1 - Kötü</option>
+      </select>
+
+      <label className="block text-xs font-black text-slate-400 tracking-widest mb-2">
+        YORUM
+      </label>
+
+      <textarea
+        value={feedbackYorum}
+        onChange={(e) => setFeedbackYorum(e.target.value)}
+        placeholder="Eğitimle ilgili yorumunu yaz..."
+        className="w-full h-32 mb-6 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none resize-none"
+      />
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => setShowFeedback(false)}
+          className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black"
+        >
+          Sonra
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSubmitFeedback}
+          className="flex-[2] py-3 bg-red-600 text-white rounded-2xl font-black"
+        >
+          Gönder
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </KullaniciLayout>
   );
 }

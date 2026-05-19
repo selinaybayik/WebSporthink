@@ -6,6 +6,7 @@ import {
   Megaphone,
   Search,
   UserRound,
+   Filter,
 } from "lucide-react";
 import { getUserAnnouncements } from "../../services/api";
 
@@ -13,6 +14,7 @@ export default function Duyurularim({ user, setUser }) {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+  const [announcementFilter, setAnnouncementFilter] = useState("Tümü");
 
   useEffect(() => {
     loadAnnouncements();
@@ -34,17 +36,54 @@ export default function Duyurularim({ user, setUser }) {
   };
 
   const filteredAnnouncements = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
+  let data = [...announcements];
 
-    if (!q) return announcements;
+  if (announcementFilter === "Bugün") {
+    const today = new Date().toDateString();
 
-    return announcements.filter(
+    data = data.filter(
+      (item) => item.created_at && new Date(item.created_at).toDateString() === today
+    );
+  }
+
+  if (announcementFilter === "Bu Hafta") {
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+
+    data = data.filter((item) => {
+      if (!item.created_at) return false;
+      const date = new Date(item.created_at);
+      return date >= sevenDaysAgo && date <= now;
+    });
+  }
+
+  if (announcementFilter === "Bu Ay") {
+    const now = new Date();
+
+    data = data.filter((item) => {
+      if (!item.created_at) return false;
+      const date = new Date(item.created_at);
+      return (
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
+      );
+    });
+  }
+
+  const q = searchText.trim().toLowerCase();
+
+  if (q) {
+    data = data.filter(
       (item) =>
         String(item.title || "").toLowerCase().includes(q) ||
         String(item.content || "").toLowerCase().includes(q) ||
         String(item.creator_name || "").toLowerCase().includes(q)
     );
-  }, [announcements, searchText]);
+  }
+
+  return data;
+}, [announcements, searchText, announcementFilter]);
 
   const formatDate = (value) => {
     if (!value) return "-";
@@ -94,6 +133,37 @@ export default function Duyurularim({ user, setUser }) {
               </p>
             </div>
           </div>
+
+        <div className="bg-white border border-slate-200 rounded-[2rem] p-4 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
+  <div className="flex items-center gap-3">
+    <div className="w-11 h-11 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+      <Filter size={20} />
+    </div>
+
+    <div>
+      <p className="text-sm font-black text-slate-900">Duyuruları Filtrele</p>
+      <p className="text-xs font-bold text-slate-400">
+        Tarihe göre duyuruları listele
+      </p>
+    </div>
+  </div>
+
+  <div className="flex flex-wrap gap-2">
+    {["Tümü", "Bugün", "Bu Hafta", "Bu Ay"].map((filter) => (
+      <button
+        key={filter}
+        onClick={() => setAnnouncementFilter(filter)}
+        className={`h-11 px-5 rounded-2xl text-sm font-black transition ${
+          announcementFilter === filter
+            ? "bg-red-600 text-white shadow-lg shadow-red-600/20"
+            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+        }`}
+      >
+        {filter}
+      </button>
+    ))}
+  </div>
+</div>
 
           <div className="bg-white border border-slate-200 rounded-[2rem] p-5 shadow-sm">
             {loading ? (

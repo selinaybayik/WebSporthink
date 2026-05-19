@@ -1,19 +1,275 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-.custom-scroll::-webkit-scrollbar {
+
+/* SCROLL */
+.custom-scroll::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
 
-.custom-scroll::-webkit-scrollbar-track {
+.custom-scroll::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb {
+.custom-scroll::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb {
   background: #334155;
   border-radius: 999px;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb:hover {
+.custom-scroll::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #ef4444;
+}
+
+/* GLOBAL */
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+* {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* LIGHT DEFAULT */
+html:not(.dark),
+html:not(.dark) body,
+html:not(.dark) #root {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* DARK DEFAULT */
+html.dark,
+html.dark body,
+html.dark #root {
+  background: #020617 !important;
+  color: #f8fafc !important;
+}
+
+/* DARK BACKGROUNDS */
+html.dark .bg-white {
+  background-color: #0f172a !important;
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-\[\#F8FAFC\] {
+  background-color: #020617 !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #111827 !important;
+}
+
+html.dark .bg-slate-950,
+html.dark .bg-slate-900,
+html.dark .bg-black {
+  background-color: #111827 !important;
+}
+
+/* DARK TEXT */
+html.dark .text-black,
+html.dark .text-slate-950,
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-700,
+html.dark .text-slate-600,
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-white {
+  color: #ffffff !important;
+}
+
+/* LIGHT FIX */
+html:not(.dark) .bg-slate-50,
+html:not(.dark) .bg-\[\#F8FAFC\] {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) .bg-white {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .text-slate-950,
+html:not(.dark) .text-slate-900,
+html:not(.dark) .text-black {
+  color: #0f172a !important;
+}
+
+/* USER CONTENT LIGHT FIX */
+html:not(.dark) .user-content .bg-slate-950,
+html:not(.dark) .user-content .bg-slate-900,
+html:not(.dark) .user-content .bg-black {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* USER CONTENT DARK FIX */
+html.dark .user-content {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .user-content .bg-white {
+  background-color: #0f172a !important;
+}
+
+html.dark .user-content .bg-slate-50,
+html.dark .user-content .bg-\[\#F8FAFC\] {
+  background-color: #020617 !important;
+}
+
+html.dark .user-content .bg-slate-950,
+html.dark .user-content .bg-slate-900,
+html.dark .user-content .bg-black {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+}
+
+/* ALL PANEL TEXT FIX */
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+  color: #f8fafc !important;
+}
+
+html.dark p,
+html.dark label {
+  color: #cbd5e1 !important;
+}
+
+/* BUTON / MARKA RENKLERİ BOZULMASIN */
+html.dark .bg-red-600,
+html.dark .bg-red-700,
+html:not(.dark) .bg-red-600,
+html:not(.dark) .bg-red-700 {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+html.dark .text-red-600,
+html.dark .text-red-500 {
+  color: #ef4444 !important;
+}
+
+html.dark .text-emerald-600,
+html.dark .text-emerald-700 {
+  color: #34d399 !important;
+}
+
+html.dark .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+html.dark .text-orange-600,
+html.dark .text-amber-600 {
+  color: #fbbf24 !important;
+}
+
+/* LIGHT COLOR CARDS */
+html.dark .bg-red-50,
+html.dark .bg-blue-50,
+html.dark .bg-emerald-50,
+html.dark .bg-orange-50,
+html.dark .bg-yellow-50,
+html.dark .bg-purple-50,
+html.dark .bg-amber-50 {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+}
+
+/* BORDER */
+html.dark .border-slate-50,
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300 {
+  border-color: #1e293b !important;
+}
+
+/* INPUT */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* TABLE */
+html.dark table,
+html.dark thead,
+html.dark tbody,
+html.dark tr {
+  background-color: transparent !important;
+  border-color: #1e293b !important;
+}
+
+/* SHADOW */
+html.dark .shadow-sm,
+html.dark .shadow,
+html.dark .shadow-lg,
+html.dark .shadow-xl,
+html.dark .shadow-2xl {
+  box-shadow: none !important;
+}/* ===== EGITMEN INLINE STYLE DARK FIX ===== */
+
+html.dark [style*="background-color: rgb(246"],
+html.dark [style*="background-color:#F6"],
+html.dark [style*="background-color: #F6"],
+html.dark [style*="background: rgb(246"],
+html.dark [style*="background:#F6"],
+html.dark [style*="background: #F6"] {
+  background: #020617 !important;
+}
+
+html.dark [style*="background-color: rgb(255"],
+html.dark [style*="background-color:#fff"],
+html.dark [style*="background-color: #fff"],
+html.dark [style*="background: rgb(255"],
+html.dark [style*="background:#fff"],
+html.dark [style*="background: #fff"] {
+  background: #0f172a !important;
+}
+
+html.dark [style*="color: rgb(8"],
+html.dark [style*="color:#081229"],
+html.dark [style*="color: #081229"],
+html.dark [style*="color:#0f172a"],
+html.dark [style*="color: #0f172a"],
+html.dark [style*="color: black"] {
+  color: #f8fafc !important;
+}
+
+html.dark [style*="color:#64748B"],
+html.dark [style*="color: #64748B"],
+html.dark [style*="color: rgb(100"] {
+  color: #94a3b8 !important;
+}
+
+html.dark [style*="border: 1px solid #EEF"],
+html.dark [style*="border: 1px solid #F1"],
+html.dark [style*="border-color: #EEF"],
+html.dark [style*="border-color: #F1"] {
+  border-color: #1e293b !important;
 }

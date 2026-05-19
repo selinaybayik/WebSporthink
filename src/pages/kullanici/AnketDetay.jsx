@@ -18,6 +18,7 @@ export default function AnketDetay({ user, setUser }) {
   const { id } = useParams();
 
   const survey = location.state?.survey || {};
+  const is360 = survey.is360 === true;
 
   const formatDate = (date) => {
     if (!date) return "-";
@@ -63,7 +64,9 @@ export default function AnketDetay({ user, setUser }) {
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-xs font-black tracking-[3px] mb-6">
                 <ClipboardList size={15} />
-                GERİ BİLDİRİM ANKETİ
+                {is360
+  ? "360 DERECE DEĞERLENDİRME"
+  : "GERİ BİLDİRİM ANKETİ"}
               </div>
 
               <h2 className="text-5xl font-black leading-tight mb-5">
@@ -71,8 +74,48 @@ export default function AnketDetay({ user, setUser }) {
               </h2>
 
               <p className="text-slate-200 text-lg leading-8 font-semibold">
-                Eğitim deneyimini geliştirmek için görüşlerin bizim için çok
-                değerli. Yanıtların tamamen analiz ve gelişim amaçlı kullanılacaktır.
+               {is360 ? (
+  <>
+    <p>
+      Bu görev kapsamında çalışma arkadaşını belirli yetkinlikler
+      açısından değerlendireceksin.
+    </p>
+
+    <p>
+      Yanıtların gelişim ve performans analizlerinde kullanılacaktır.
+    </p>
+
+    <div className="bg-purple-50 border border-purple-100 rounded-[2rem] p-6 mt-5">
+      <p className="text-purple-700 font-black text-sm tracking-[2px] mb-2">
+        DEĞERLENDİRİLECEK KİŞİ
+      </p>
+
+      <h4 className="text-2xl font-black text-slate-950">
+        {survey.hedefAdi || "-"}
+      </h4>
+
+      <p className="text-slate-500 font-semibold">
+        {survey.hedefDepartman || "Departman bilgisi yok"}
+      </p>
+    </div>
+  </>
+) : (
+  <>
+    <p>
+      Eğitim deneyimini geliştirmek için görüşlerin bizim için çok
+      değerli.
+    </p>
+
+    <p>
+      Vereceğin yanıtlar yöneticiler ve eğitim ekipleri tarafından
+      analizlerde kullanılabilir.
+    </p>
+
+    <p>
+      Samimi geri bildirimlerin kurum gelişimine katkı sağlar.
+    </p>
+  </>
+)}
               </p>
 
               <div className="flex items-center gap-8 mt-8">
@@ -164,8 +207,14 @@ export default function AnketDetay({ user, setUser }) {
               <button
                 onClick={() =>
                   navigate(`/user/anket-cevapla/${id}`, {
-                    state: { survey },
-                  })
+  state: {
+    survey: {
+      ...survey,
+      is360,
+      atamaId: survey.atamaId,
+    },
+  },
+})
                 }
                 className="w-full bg-white hover:bg-slate-100 transition text-red-600 py-5 rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl"
               >

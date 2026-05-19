@@ -15,8 +15,9 @@ import {
   Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import EgitmenSidebar from "../../components/EgitmenSidebar";
 
-const BASE_URL = "http://10.204.138.92:4000";
+const BASE_URL = "http://10.151.120.92:4000";
 
 export default function EgitmenSertifikalarim({ user }) {
   const navigate = useNavigate();
@@ -62,6 +63,12 @@ export default function EgitmenSertifikalarim({ user }) {
   }).length;
 
   return (
+  <div className="flex min-h-screen bg-[#F8FAFC]">
+    <EgitmenSidebar
+      user={user}
+      setUser={() => {}}
+    />
+
     <main className="flex-1 bg-[#F8FAFC] min-h-screen">
       <style>{`
         @media print {
@@ -187,6 +194,7 @@ export default function EgitmenSertifikalarim({ user }) {
         />
       )}
     </main>
+    </div>
   );
 }
 

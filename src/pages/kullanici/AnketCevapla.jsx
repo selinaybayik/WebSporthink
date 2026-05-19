@@ -31,7 +31,7 @@ export default function AnketCevapla({ user, setUser }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
-  const BASE_URL = "http://10.204.138.92:4000";
+  const BASE_URL = "http://10.151.120.92:4000";
 
   useEffect(() => {
     loadSurvey();
@@ -44,7 +44,10 @@ export default function AnketCevapla({ user, setUser }) {
       setLoading(true);
       const response = await fetch(`${BASE_URL}/api/user/anket/${id}`);
       const data = await response.json();
-      setSurvey(data.anket || surveyFromState);
+      setSurvey({
+  ...(data.anket || {}),
+  ...surveyFromState,
+});
       setQuestions(Array.isArray(data.sorular) ? data.sorular : []);
     } catch (error) {
       console.log("Anket detayı alınamadı:", error.message);
@@ -113,15 +116,30 @@ export default function AnketCevapla({ user, setUser }) {
         return { questionId, answer: value, score: null };
       });
 
-      const response = await fetch(`${BASE_URL}/api/user/anket-cevapla`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user?.id,
-          anketId: Number(id),
-          answers: payload,
-        }),
-      });
+      const is360 = survey?.is360 === true;
+
+const endpoint = is360
+  ? `${BASE_URL}/api/user/360-cevapla`
+  : `${BASE_URL}/api/user/anket-cevapla`;
+
+const body = is360
+  ? {
+      userId: user?.id,
+      atamaId: survey.atamaId,
+      anketId: Number(id),
+      answers: payload,
+    }
+  : {
+      userId: user?.id,
+      anketId: Number(id),
+      answers: payload,
+    };
+
+const response = await fetch(endpoint, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
 
       const data = await response.json();
 
@@ -129,7 +147,11 @@ export default function AnketCevapla({ user, setUser }) {
         throw new Error(data.message || "Anket gönderilemedi.");
       }
 
-      alert("Anket yanıtların başarıyla gönderildi.");
+      alert(
+  survey?.is360
+    ? "360 değerlendirme başarıyla gönderildi."
+    : "Anket yanıtların başarıyla gönderildi."
+);
       navigate("/user/anketler");
     } catch (error) {
       alert(error.message || "Anket gönderilemedi.");
@@ -184,7 +206,9 @@ export default function AnketCevapla({ user, setUser }) {
 
         <div className="text-right">
           <p className="text-slate-400 font-black text-xs tracking-[3px]">
-            {survey?.baslik || "DEĞERLENDİRME ANKETİ"}
+            {survey?.is360
+  ? `360 • ${survey?.hedefAdi || ""}`
+  : survey?.baslik || "DEĞERLENDİRME ANKETİ"}
           </p>
           <p className="text-slate-950 font-black">
             {currentIndex + 1} / {questions.length}
@@ -194,7 +218,29 @@ export default function AnketCevapla({ user, setUser }) {
 
       <main className="max-w-6xl mx-auto px-10 py-10">
         <div className="mb-10">
-          <h1 className="text-3xl font-black text-slate-950 mb-6">Açıklama</h1>
+          <h1 className="text-3xl font-black text-slate-950 mb-6">
+  {survey?.is360 ? "360 Değerlendirme" : "Açıklama"}
+</h1>
+          {survey?.is360 && (
+  <div className="bg-purple-50 border border-purple-100 rounded-[2rem] p-6 mb-8">
+    <p className="text-purple-600 font-black text-xs tracking-[3px] mb-2">
+      ŞU KİŞİYİ DEĞERLENDİRİYORSUN
+    </p>
+
+    <h3 className="text-3xl font-black text-slate-950">
+      {survey.hedefAdi || "-"}
+    </h3>
+
+    <p className="text-slate-500 font-semibold mt-1">
+      {survey.hedefDepartman || "-"}
+    </p>
+
+    <p className="text-slate-600 font-bold mt-5 leading-7">
+      Aşağıdaki soruları bu kişi için cevapla. Seçtiğin puanlar
+      yöneticinin 360 analiz ekranında bu kişiye ait değerlendirme olarak görünecek.
+    </p>
+  </div>
+)}
           <p className="text-lg font-semibold text-slate-700 mb-4">
             <span className="text-red-600 text-3xl font-black mr-2">*</span>
             İşaretli sorular zorunlu sorulardır.
@@ -291,7 +337,7 @@ export default function AnketCevapla({ user, setUser }) {
               "GÖNDERİLİYOR..."
             ) : isLastQuestion ? (
               <>
-                GÖNDER
+                {survey?.is360 ? "DEĞERLENDİRMEYİ GÖNDER" : "GÖNDER"}
                 <CheckCircle2 size={18} />
               </>
             ) : (

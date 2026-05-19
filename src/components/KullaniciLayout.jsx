@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Award,
@@ -13,7 +13,6 @@ import {
   Megaphone,
   Menu,
   MessageCircle,
-  Search,
   Settings,
   Trophy,
   User,
@@ -24,13 +23,27 @@ export default function KullaniciLayout({
   user,
   setUser,
   activePath,
-  searchPlaceholder = "Sistem içinde ara...",
-  searchValue = "",
-  onSearchChange,
   children,
 }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+ const [darkMode, setDarkMode] = useState(false);
+
+useEffect(() => {
+  document.documentElement.classList.remove("dark");
+  localStorage.setItem("theme", "light");
+}, []);
+
+useEffect(() => {
+  if (darkMode) {
+    document.documentElement.classList.add("dark");
+    localStorage.setItem("theme", "dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+    localStorage.setItem("theme", "light");
+  }
+}, [darkMode]);
 
   const menuSections = [
     {
@@ -69,9 +82,9 @@ export default function KullaniciLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors">
       <aside
-        className={`bg-slate-950 text-white min-h-screen fixed left-0 top-0 z-50 transition-all duration-300 ${
+        className={`bg-slate-950 dark:bg-black text-white min-h-screen fixed left-0 top-0 z-50 transition-all duration-300 ${
           sidebarOpen ? "w-72" : "w-24"
         }`}
       >
@@ -138,7 +151,7 @@ export default function KullaniciLayout({
           ))}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-[130px] p-5 border-t border-white/10 bg-slate-950">
+        <div className="absolute bottom-0 left-0 right-0 h-[130px] p-5 border-t border-white/10 bg-slate-950 dark:bg-black">
           {sidebarOpen ? (
             <>
               <p className="text-[11px] text-red-400 font-black tracking-widest">
@@ -170,31 +183,30 @@ export default function KullaniciLayout({
       </aside>
 
       <main
-        className={`flex-1 transition-all duration-300 ${
+        className={`flex-1 transition-all duration-300 bg-slate-50 dark:bg-slate-950 ${
           sidebarOpen ? "ml-72" : "ml-24"
         }`}
       >
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 sticky top-0 z-40">
-          <div className="w-[430px] h-12 bg-slate-100 rounded-2xl flex items-center px-4 gap-3">
-            <Search size={20} className="text-slate-400" />
-
-            <input
-  value={searchValue}
-  onChange={(e) => onSearchChange?.(e.target.value)}
-  placeholder={searchPlaceholder}
-  className="bg-transparent outline-none w-full text-sm font-semibold text-slate-600"
-/>
-          </div>
+        <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-end px-10 sticky top-0 z-40 transition-colors">
+          <button
+            onClick={() => setDarkMode((prev) => !prev)}
+            className="w-12 h-12 mr-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-white flex items-center justify-center hover:scale-105 transition"
+            title={darkMode ? "Açık moda geç" : "Koyu moda geç"}
+          >
+            {darkMode ? "☀️" : "🌙"}
+          </button>
 
           <button
             onClick={() => navigate("/user/bildirimler")}
-            className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/20"
+            className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/20 hover:scale-105 transition"
           >
             <Bell size={22} />
           </button>
         </header>
 
-        {children}
+        <div className="user-content text-slate-950 dark:text-white transition-colors">
+  {children}
+</div>
       </main>
     </div>
   );

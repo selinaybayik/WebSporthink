@@ -122,6 +122,17 @@ export default function IcerikEkle({ user }) {
 
   const [required, setRequired] =
     useState(true);
+    const [aiQuizEnabled, setAiQuizEnabled] =
+  useState(true);
+
+const [quizCheckpoint1, setQuizCheckpoint1] =
+  useState(40);
+
+const [quizCheckpoint2, setQuizCheckpoint2] =
+  useState(80);
+
+const [contentBasedQuiz, setContentBasedQuiz] =
+  useState(true);
 
   useEffect(() => {
     const loadCourses = async () => {
@@ -276,18 +287,30 @@ export default function IcerikEkle({ user }) {
         });
       }
 
-      if (selectedType === "video") {
-        await createVideoContent({
-          bolum_id:
-            selectedModule.bolum_id,
+     if (selectedType === "video") {
+  await createVideoContent({
+    bolum_id:
+      selectedModule.bolum_id,
 
-          baslik: title.trim(),
+    baslik: title.trim(),
 
-          url: contentUrl.trim(),
+    url: contentUrl.trim(),
 
-          sure_bilgisi: "0 dk",
-        });
-      }
+    sure_bilgisi: "0 dk",
+
+    ai_quiz_aktif:
+      aiQuizEnabled,
+
+    ai_quiz_checkpoint_1:
+      quizCheckpoint1,
+
+    ai_quiz_checkpoint_2:
+      quizCheckpoint2,
+
+    ai_soru_uret:
+      contentBasedQuiz,
+  });
+}
 
       if (selectedType === "pdf") {
         await createPdfContent({
@@ -682,7 +705,194 @@ export default function IcerikEkle({ user }) {
       : "PDF linki yapıştır..."
   }
   style={styles.input}
-/>
+/>{selectedType === "video" && (
+  <div
+    style={{
+      background: "#F8FAFC",
+      border: "1px solid #E2E8F0",
+      borderRadius: 28,
+      padding: 24,
+      marginBottom: 24,
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 18,
+      }}
+    >
+      <div>
+        <h3
+          style={{
+            margin: 0,
+            color: DARK,
+            fontWeight: 900,
+            fontSize: 18,
+          }}
+        >
+          🧠 AI Mini Öğrenme Kontrolü
+        </h3>
+
+        <p
+          style={{
+            margin: "8px 0 0",
+            color: MUTED,
+            fontWeight: 700,
+            fontSize: 13,
+          }}
+        >
+          Kullanıcı video sırasında mini quiz popup görsün
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() =>
+          setAiQuizEnabled(!aiQuizEnabled)
+        }
+        style={{
+          width: 70,
+          height: 38,
+          borderRadius: 999,
+          border: "none",
+          cursor: "pointer",
+          background: aiQuizEnabled
+            ? RED
+            : "#CBD5E1",
+          position: "relative",
+          transition: "all .25s",
+        }}
+      >
+        <div
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: "50%",
+            background: "#fff",
+            position: "absolute",
+            top: 4,
+            left: aiQuizEnabled
+              ? 35
+              : 4,
+            transition: "all .25s",
+          }}
+        />
+      </button>
+    </div>
+
+    {aiQuizEnabled && (
+      <>
+        <label style={styles.inputLabel}>
+          QUIZ POPUP NOKTALARI
+        </label>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "1fr 1fr",
+            gap: 14,
+            marginBottom: 20,
+          }}
+        >
+          <input
+            type="number"
+            min="10"
+            max="90"
+            value={quizCheckpoint1}
+            onChange={(e) =>
+              setQuizCheckpoint1(
+                Number(e.target.value)
+              )
+            }
+            style={styles.input}
+          />
+
+          <input
+            type="number"
+            min="10"
+            max="95"
+            value={quizCheckpoint2}
+            onChange={(e) =>
+              setQuizCheckpoint2(
+                Number(e.target.value)
+              )
+            }
+            style={styles.input}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            setContentBasedQuiz(
+              !contentBasedQuiz
+            )
+          }
+          style={{
+            width: "100%",
+            minHeight: 72,
+            borderRadius: 22,
+            border: "none",
+            background:
+              contentBasedQuiz
+                ? "#EFF6FF"
+                : "#F8FAFC",
+            padding: 18,
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            cursor: "pointer",
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 12,
+              background: "#fff",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            {contentBasedQuiz && (
+              <Check
+                size={18}
+                color={RED}
+              />
+            )}
+          </div>
+
+          <div>
+            <p
+              style={{
+                margin: 0,
+                color: DARK,
+                fontWeight: 900,
+                textAlign: "left",
+              }}
+            >
+              İçeriğe göre AI soru üretsin
+            </p>
+
+            <p
+              style={{
+                margin: "5px 0 0",
+                color: MUTED,
+                fontSize: 12,
+                textAlign: "left",
+              }}
+            >
+              Video içeriğini analiz edip soru üretir
+            </p>
+          </div>
+        </button>
+      </>
+    )}
+  </div>
+)}
                     </>
                   )}
 
@@ -1158,30 +1368,37 @@ uploadSuccess: {
   },
 
   footer: {
-    position: "fixed",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: "14px 28px",
-    backgroundColor:
-      "rgba(255,255,255,0.96)",
-    borderTop: "1px solid #EEF2F7",
-  },
+  position: "fixed",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  padding: "14px 28px",
+  backgroundColor: "rgba(255,255,255,0.96)",
+  borderTop: "1px solid #EEF2F7",
+  display: "flex",
+  justifyContent: "center",
+  backdropFilter: "blur(14px)",
+},
 
-  publishButton: {
-    width: "100%",
-    height: 70,
-    borderRadius: 28,
-    border: "none",
-    backgroundColor: RED,
-    color: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    fontSize: 14,
-    fontWeight: 900,
-    letterSpacing: 2,
-    cursor: "pointer",
-  },
+publishButton: {
+  minWidth: 280,
+  maxWidth: 380,
+  width: "fit-content",
+  height: 56,
+  padding: "0 28px",
+  borderRadius: 20,
+  border: "none",
+  backgroundColor: RED,
+  color: "#fff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 10,
+  fontSize: 13,
+  fontWeight: 900,
+  letterSpacing: 1.2,
+  cursor: "pointer",
+  boxShadow: "0 10px 30px rgba(237,0,21,0.25)",
+  transition: "all .2s ease",
+},
 };

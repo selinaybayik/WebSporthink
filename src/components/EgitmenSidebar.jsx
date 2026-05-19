@@ -1,4 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -26,6 +30,8 @@ import {
   Info,
   Palette,
   BookMarked,
+  Sun,
+  Moon,
   UserRound,
 } from "lucide-react";
 
@@ -34,6 +40,7 @@ const DARK = "#020617";
 
 export default function EgitmenSidebar({ user, setUser }) {
   const [open, setOpen] = useState(true);
+  
   const [openMenus, setOpenMenus] = useState({
     profil: false,
     ayarlar: false,
@@ -64,17 +71,18 @@ export default function EgitmenSidebar({ user, setUser }) {
       title: "EĞİTİM YÖNETİMİ",
       items: [
         { label: "Ana Sayfa", path: "/egitmen", icon: LayoutDashboard },
-        { label: "Eğitimlerim", path: "/egitmen/egitimlerim", icon: BookOpen },
+        { label: "Yüklediğim Eğitimler", path: "/egitmen/egitimlerim", icon: BookOpen },
         {
           label: "Eğitim Oluştur",
           path: "/egitmen/egitim-olustur",
           icon: PlusCircle,
         },
         {
-          label: "Öğrenme Alanım",
-          path: "/egitmen/ogrenme-alanim",
-          icon: BookOpen,
-        },
+  label: "Aldığım Eğitimler",
+  path: "/egitmen/ogrenme-alanim",
+  icon: BookOpen,
+},
+    
         
         {
           label: "Sertifikalarım",
@@ -116,10 +124,10 @@ export default function EgitmenSidebar({ user, setUser }) {
       items: [
         { label: "AI Stüdyo", path: "/egitmen/ai-studyo", icon: Wand2 },
         {
-          label: "Kaynak Yönetimi",
-          path: "/egitmen/kaynak-yonetimi",
-          icon: FolderOpen,
-        },
+  label: "Eğitim Kaynaklarım",
+  path: "/egitmen/kaynak-yonetimi",
+  icon: FolderOpen,
+},
         { label: "Asistan", path: "/egitmen/asistan", icon: Bot },
       ],
     },
@@ -148,19 +156,47 @@ export default function EgitmenSidebar({ user, setUser }) {
       }}
     >
       <div style={styles.logoArea}>
-        <div style={styles.logoBox}>S</div>
+  <div style={styles.logoBox}>S</div>
 
-        {open && (
-          <div>
-            <div style={styles.logoTitle}>Sporthink</div>
-            <div style={styles.logoSub}>Eğitmen Paneli</div>
-          </div>
-        )}
+  {open && (
+    <div style={{ flex: 1 }}>
+      <div style={styles.logoTitle}>Sporthink</div>
+      <div style={styles.logoSub}>Eğitmen Paneli</div>
+    </div>
+  )}
 
-        <button style={styles.collapseBtn} onClick={() => setOpen(!open)}>
-          {open ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-        </button>
-      </div>
+  <div style={styles.logoActions}>
+    <button
+  onClick={() => {
+    const isDark =
+      document.documentElement.classList.contains(
+        "dark"
+      );
+
+    document.documentElement.classList.toggle(
+      "dark",
+      !isDark
+    );
+
+    localStorage.setItem(
+      "theme",
+      !isDark ? "dark" : "light"
+    );
+  }}
+  style={styles.themeBtn}
+>
+  {document.documentElement.classList.contains("dark") ? (
+    <Sun size={18} />
+  ) : (
+    <Moon size={18} />
+  )}
+</button>
+
+    <button style={styles.collapseBtn} onClick={() => setOpen(!open)}>
+      {open ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+    </button>
+  </div>
+</div>
 
       {open && (
         <div style={styles.userBox}>
@@ -396,7 +432,6 @@ const styles = {
     fontWeight: 700,
   },
   collapseBtn: {
-    marginLeft: "auto",
     width: 32,
     height: 32,
     borderRadius: 10,
@@ -485,6 +520,24 @@ const styles = {
     marginBottom: 5,
     transition: "0.2s ease",
   },
+  logoActions: {
+  marginLeft: "auto",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+},
+
+themeBtn: {
+  width: 34,
+  height: 34,
+  borderRadius: 10,
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.06)",
+  color: "#fff",
+  cursor: "pointer",
+  display: "grid",
+  placeItems: "center",
+},
   subMenu: {
     marginLeft: 14,
     marginBottom: 8,

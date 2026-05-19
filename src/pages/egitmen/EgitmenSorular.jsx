@@ -79,11 +79,11 @@ export default function EgitmenSorular({ user }) {
         item.question.toLowerCase().includes(keyword);
 
       const filterMatch =
-        activeFilter === "Tümü" ||
-        (activeFilter === "Yanıt Bekleyenler" &&
-          item.status === "Yanıt Bekliyor") ||
-        (activeFilter === "Arşivlenmiş" &&
-          (item.status === "Yanıtlandı" || item.status === "Arşivlenmiş"));
+  activeFilter === "Tümü" ||
+  (activeFilter === "Yanıt Bekleyenler" &&
+    item.status === "Yanıt Bekliyor") ||
+  (activeFilter === "Yanıtlananlar" &&
+    item.status === "Yanıtlandı");
 
       return searchMatch && filterMatch;
     });
@@ -135,7 +135,7 @@ export default function EgitmenSorular({ user }) {
       </div>
 
       <div style={styles.filters}>
-        {["Tümü", "Yanıt Bekleyenler", "Arşivlenmiş"].map((filter) => {
+        {["Tümü", "Yanıt Bekleyenler", "Yanıtlananlar"].map((filter) => {
           const active = activeFilter === filter;
 
           return (

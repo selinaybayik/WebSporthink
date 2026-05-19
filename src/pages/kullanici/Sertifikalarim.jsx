@@ -17,7 +17,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import KullaniciLayout from "../../components/KullaniciLayout";
  
-const BASE_URL = "http://10.204.138.92:4000";
+const BASE_URL = "http://10.151.120.92:4000";
  
 export default function Sertifikalarim({ user, setUser }) {
   const navigate = useNavigate();
@@ -45,13 +45,10 @@ export default function Sertifikalarim({ user, setUser }) {
     }
   };
  
-  const filtered = certificates
-  .filter(
-    (c) =>
-      !c.sertifika_pasif_mi &&
-      c.aktif_mi !== false
-  )
-  .filter((c) =>
+  // YENİ:
+const filtered = certificates
+  .filter(c => c.durum === 'aktif' || !c.durum)
+  .filter(c =>
     (c.title || "")
       .toLowerCase()
       .includes(search.toLowerCase())
@@ -88,28 +85,29 @@ export default function Sertifikalarim({ user, setUser }) {
       `}</style>
  
       {/* ── HEADER ── */}
-      <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 sticky top-0 z-20">
-        <div>
-          <h1 className="text-2xl font-black text-slate-950">Sertifikalarım</h1>
-          <p className="text-slate-400 font-bold text-sm">
-            {certificates.length} sertifika kazandın
-          </p>
-        </div>
+      
  
-        <div className="flex items-center gap-4">
-          <div className="w-80 h-12 bg-slate-100 rounded-2xl flex items-center px-4 gap-3 border border-slate-200">
-            <Search size={18} className="text-slate-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Sertifika ara..."
-              className="bg-transparent outline-none w-full text-sm font-bold text-slate-600"
-            />
-          </div>
-        </div>
-      </header>
- 
-      <main className="p-8 xl:p-10">
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8 xl:p-10">
+  <div className="mb-8 flex items-center justify-between">
+    <div>
+      <h1 className="text-3xl font-black text-slate-950 dark:text-white">
+        Sertifikalarım
+      </h1>
+      <p className="text-slate-400 font-bold text-sm">
+        {certificates.length} sertifika kazandın
+      </p>
+    </div>
+
+    <div className="w-80 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center px-4 gap-3 border border-slate-200 dark:border-slate-800">
+      <Search size={18} className="text-slate-400" />
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Sertifika ara..."
+        className="bg-transparent outline-none w-full text-sm font-bold text-slate-600 dark:text-white"
+      />
+    </div>
+  </div>
         {/* ── HERO STAT BAR ── */}
         <div className="grid grid-cols-3 gap-5 mb-10">
           <StatCard

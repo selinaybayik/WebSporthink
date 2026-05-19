@@ -7,8 +7,9 @@ import {
   Building2, Flame, Shield, Activity, ArrowLeft,
   Medal, Star, BarChart2, Video, CheckSquare, HelpCircle,
   Megaphone, Send, Edit3, Save, Workflow, Route, Layers,
-  ClipboardList, Target, Bot, Calendar,  PieChart,
-  BarChart3,
+  ClipboardList, Target, Bot, Calendar,  PieChart,MessageCircle,
+  BarChart3,Sun,
+Moon,
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
@@ -22,7 +23,8 @@ import {
   sendNotification, getTrainingAnalytics, updateTrainingDescription,
   getAutoRules, addAutoRule, getLearningPaths, addLearningPath,
   assignTrainingToDepartment, assignTrainingToMultipleUsers,
-  getSurveys, addSurvey, assignSurvey, getSurveyAssignments,
+  getSurveys, addSurvey, assignSurvey, getSurveyAssignments,assignLearningPathToDepartment,
+  get360Analysis,
   getAIPersonnelAnalysis,
   restartTrainingForUser,
   sendAdminAnnouncement,
@@ -30,11 +32,27 @@ getAdminAnnouncements,
 getAdminProfile,
 updateAdminProfile,
 updateAdminPassword,
+getAllFeedbacks,
 } from '../services/api';
 import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = ({ user }) => {
   const navigate = useNavigate();
+  const [darkMode, setDarkMode] = useState(
+  localStorage.getItem("theme") === "dark"
+);
+
+useEffect(() => {
+  document.documentElement.classList.toggle(
+    "dark",
+    darkMode
+  );
+
+  localStorage.setItem(
+    "theme",
+    darkMode ? "dark" : "light"
+  );
+}, [darkMode]);
   const [activeTab, setActiveTab] = useState('overview'); 
   const [isModalOpen, setIsModalOpen] = useState(false); 
   const [isQuizModalOpen, setIsQuizModalOpen] = useState(false); 
@@ -52,6 +70,8 @@ const AdminDashboard = ({ user }) => {
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false);
   const [selectedBulkTraining, setSelectedBulkTraining] = useState('');
   const [bulkTargetDept, setBulkTargetDept] = useState('Satış'); 
+  const [analysis360, setAnalysis360] = useState(null);
+const [analysis360Loading, setAnalysis360Loading] = useState(false);
 
   const [notifTarget, setNotifTarget] = useState('all');
   const [notifTitle, setNotifTitle] = useState('');
@@ -79,6 +99,8 @@ const [passwordForm, setPasswordForm] = useState({
   const [surveys, setSurveys] = useState([]);
   const [surveyAssignments, setSurveyAssignments] = useState([]);
   const [selectedSurveyAnalysis, setSelectedSurveyAnalysis] = useState(null);
+  const [feedbacks, setFeedbacks] = useState([]);
+const [surveyView, setSurveyView] = useState("surveys");
   const [newSurveyTitle, setNewSurveyTitle] = useState('');
   const [newSurveyQuestions, setNewSurveyQuestions] = useState(['', '', '']); 
 
@@ -92,6 +114,7 @@ const [passwordForm, setPasswordForm] = useState({
   const [rewardRequests, setRewardRequests] = useState([]); 
   const [leaderboard, setLeaderboard] = useState([]);
   const [allTrainings, setAllTrainings] = useState([]); 
+  const [academyFilter, setAcademyFilter] = useState("published");
   const [personnelTrainings, setPersonnelTrainings] = useState([]); 
   const [personnelCerts, setPersonnelCerts] = useState([]);
   const [expandedPerformance, setExpandedPerformance] = useState({}); 
@@ -103,24 +126,27 @@ const [adminAnnouncementDept, setAdminAnnouncementDept] = useState("IT");
 const [adminAnnouncements, setAdminAnnouncements] = useState([]);
 const [announcementSearch, setAnnouncementSearch] = useState("");
 const [showAnnouncementHistory, setShowAnnouncementHistory] = useState(false);
+const [selectedPerson360, setSelectedPerson360] = useState(null);
 
   const refreshData = async () => {
     setLoading(true);
     try {
       if (user?.id) {
         const [
-          statsData, usersData, rewardsData, requestsData, boardData, trainingsData,
-          rulesData, pathsData, surveysData, surveyAssignmentsData
-        ] = await Promise.all([
+  statsData, usersData, rewardsData, requestsData, boardData, trainingsData,
+  rulesData, pathsData, surveysData, surveyAssignmentsData, feedbackData
+] = await Promise.all([
           getDashboardStats(user.id), getUsersList(user.role, user.department),
-          getRewards(), getPendingRewardRequests(), getLeaderboard(), getAllTrainings(),
-          getAutoRules(), getLearningPaths(), getSurveys(), getSurveyAssignments()
+getRewards(), getPendingRewardRequests(), getLeaderboard(),
+getAllTrainings(user.id, user.role, user.department),
+getAutoRules(), getLearningPaths(), getSurveys(), getSurveyAssignments(),getAllFeedbacks()
         ]);
         setStats(statsData); setUsers(usersData || []); setRewards(rewardsData || []);
         setRewardRequests(requestsData || []); setLeaderboard(boardData || []); 
         setAllTrainings(trainingsData || []);
-        setAutoRules(rulesData || []); setLearningPaths(pathsData || []);
+        setAutoRules(Array.isArray(rulesData) ? rulesData : []);setLearningPaths(Array.isArray(pathsData) ? pathsData : []);
         setSurveys(surveysData || []); setSurveyAssignments(surveyAssignmentsData || []);
+        setFeedbacks(feedbackData || []);
       }
     } catch (error) {
       console.error("Veri çekme hatası:", error);
@@ -331,15 +357,25 @@ const handleUpdateAdminPassword = async (e) => {
 };
 
   const handleSaveAutoRule = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
-    try {
-      await addAutoRule({ egitimId: data.egitimId, tetikleyiciTur: 'DEPARTMAN', tetikleyiciDeger: data.departman });
-      alert("Otomasyon Kuralı Aktif Edildi! 🤖");
-      e.target.reset(); refreshData();
-    } catch(err) { alert("Hata: " + err.message); }
-  };
+  e.preventDefault();
+
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData);
+
+  try {
+    const result = await assignLearningPathToDepartment({
+      yolId: data.yolId,
+      departman: data.departman,
+      atayanId: user?.id,
+    });
+
+    alert(result.message || "Öğrenme paketi departmana atandı.");
+    e.target.reset();
+    refreshData();
+  } catch (err) {
+    alert(err.message || "Paket atanamadı.");
+  }
+};
 
   const handleSaveLearningPath = async (e) => {
     e.preventDefault();
@@ -367,10 +403,13 @@ const handleUpdateAdminPassword = async (e) => {
   };
 
   const handleMultiAssign = async (e) => {
+    const safeSelectedUserIds = selectedUserIds.filter((id) =>
+  assignableUsers.some((u) => String(u.id) === String(id))
+);
     e.preventDefault();
     if (!selectedMultiTraining) return alert("Lütfen atanacak eğitimi seçin!");
     try {
-      const result = await assignTrainingToMultipleUsers(selectedUserIds, selectedMultiTraining);
+      const result = await assignTrainingToMultipleUsers(safeSelectedUserIds, selectedMultiTraining);;
       alert(result.message);
       setIsMultiAssignModalOpen(false); setSelectedMultiTraining(''); setSelectedUserIds([]); refreshData();
     } catch (err) { alert("Hata: " + err.message); }
@@ -430,12 +469,43 @@ const surveyCompletionRate =
       )
     : 0;
 
+const selectedSurveyId =
+  selectedSurveyAnalysis?.anket_id || selectedSurveyAnalysis?.id || null;
+
+const selectedSurveyName =
+  selectedSurveyAnalysis?.baslik ||
+  selectedSurveyAnalysis?.anket_adi ||
+  selectedSurveyAnalysis?.title ||
+  "";
+
 const selectedSurveyAssignments = selectedSurveyAnalysis
-  ? surveyAssignments.filter(
-      (a) =>
-        String(a.anket_id) === String(selectedSurveyAnalysis.anket_id) ||
-        String(a.anket_id) === String(selectedSurveyAnalysis.id)
-    )
+  ? surveyAssignments.filter((a) => {
+      const assignmentSurveyId =
+        a.anket_id ||
+        a.anketId ||
+        a.survey_id ||
+        a.surveyId;
+
+      const assignmentSurveyName =
+        a.anket_adi ||
+        a.anketAdi ||
+        a.baslik ||
+        a.title ||
+        "";
+
+      const idMatch =
+        assignmentSurveyId &&
+        selectedSurveyId &&
+        String(assignmentSurveyId) === String(selectedSurveyId);
+
+      const nameMatch =
+        assignmentSurveyName &&
+        selectedSurveyName &&
+        String(assignmentSurveyName).trim().toLowerCase() ===
+          String(selectedSurveyName).trim().toLowerCase();
+
+      return idMatch || nameMatch;
+    })
   : [];
 
 const selectedSurveyCompleted = selectedSurveyAssignments.filter(
@@ -451,11 +521,78 @@ const selectedSurveyRate =
         (selectedSurveyCompleted / selectedSurveyAssignments.length) * 100
       )
     : 0;
+const exportSurveyAnalysisCSV = () => {
+  if (!selectedSurveyAnalysis) {
+    alert("Önce analiz edilecek anket seç.");
+    return;
+  }
 
-  const filteredUsers = Array.isArray(users) ? users.filter(person => 
-    `${person.ad} ${person.soyad}`.toLowerCase().includes(personnelSearch.toLowerCase()) ||
-    person.departman.toLowerCase().includes(personnelSearch.toLowerCase())
-  ) : [];
+  const rows = selectedSurveyAssignments.map((a) => ({
+    Anket: selectedSurveyAnalysis.baslik,
+    Değerlendirilen: a.hedef_kullanici || "-",
+    Değerlendiren: a.degerlendiren || "-",
+    Durum: a.durum || "-",
+  }));
+
+  if (rows.length === 0) {
+    alert("Dışa aktarılacak kayıt yok.");
+    return;
+  }
+
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(";"),
+    ...rows.map((row) =>
+      headers
+        .map((h) => `"${String(row[h] ?? "").replaceAll('"', '""')}"`)
+        .join(";")
+    ),
+  ].join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${selectedSurveyAnalysis.baslik || "anket"}-analiz.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const exportSurveyAnalysisPDF = () => {
+  if (!selectedSurveyAnalysis) {
+    alert("Önce analiz edilecek anket seç.");
+    return;
+  }
+
+  window.print();
+};
+
+  const assignableUsers = Array.isArray(users)
+  ? users.filter((person) => {
+      const role = String(person.rol || person.role || "").toLowerCase();
+
+      return (
+        role !== "egitmen" &&
+        role !== "eğitmen" &&
+        role !== "admin" &&
+        role !== "ik" &&
+        role !== "departman_yoneticisi" &&
+        role !== "departman yöneticisi"
+      );
+    })
+  : [];
+
+const filteredUsers = assignableUsers.filter((person) =>
+  `${person.ad || ""} ${person.soyad || ""}`
+    .toLowerCase()
+    .includes(personnelSearch.toLowerCase()) ||
+  String(person.departman || "")
+    .toLowerCase()
+    .includes(personnelSearch.toLowerCase())
+);
   const filteredAdminAnnouncements = Array.isArray(adminAnnouncements)
   ? adminAnnouncements.filter((item) => {
       const key = announcementSearch.trim().toLowerCase();
@@ -468,6 +605,45 @@ const selectedSurveyRate =
       );
     })
   : [];
+
+  const getTrainingStatus = (training) => {
+  const rawStatus = String(
+    training.yayin_durumu ||
+    training.durum ||
+    training.status ||
+    training.yayinDurumu ||
+    ""
+  ).toLowerCase();
+
+  const isDraft =
+    rawStatus.includes("taslak") ||
+    rawStatus.includes("draft") ||
+    rawStatus.includes("pasif") ||
+    rawStatus.includes("inactive") ||
+    training.aktif_mi === false ||
+    training.aktifMi === false ||
+    training.is_active === false;
+
+  return isDraft ? "draft" : "published";
+};
+
+const filteredAcademyTrainings = allTrainings.filter((training) => {
+  const status = getTrainingStatus(training);
+
+  if (academyFilter === "draft") {
+    const creatorId =
+      training.olusturan_id ||
+      training.olusturanId ||
+      training.created_by ||
+      training.createdBy ||
+      training.egitmen_id ||
+      training.egitmenId;
+
+    return status === "draft" && String(creatorId) === String(user?.id);
+  }
+
+  return status === "published";
+});
 
   const handleSelectUser = (id, e) => {
     e.stopPropagation();
@@ -494,6 +670,51 @@ const selectedSurveyRate =
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
+  const handleExportPersonnelTrainingReport = () => {
+  if (!selectedPersonnel) {
+    return alert("Personel seçilmedi.");
+  }
+
+  const fullName = `${selectedPersonnel.ad || ""} ${selectedPersonnel.soyad || ""}`.trim();
+
+  const assigned = personnelTrainings.filter((t) => t.is_assigned).length;
+  const completed = personnelTrainings.filter((t) => t.is_completed).length;
+  const total = personnelTrainings.length;
+  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+
+  csvContent += "Personel,Departman,Toplam Egitim,Atanan Egitim,Tamamlanan Egitim,Tamamlanma Orani (%),XP,Streak\n";
+  csvContent += `${fullName},${selectedPersonnel.departman || "-"},${total},${assigned},${completed},${completionRate},${selectedPersonnel.xp || 0},${selectedPersonnel.streak || 0}\n\n`;
+
+  csvContent += "Egitim Adi,Atandi Mi,Tamamlandi Mi,Durum\n";
+
+  personnelTrainings.forEach((t) => {
+    const title = t.title || t.baslik || "Egitim";
+    const isAssigned = t.is_assigned ? "Evet" : "Hayir";
+    const isCompleted = t.is_completed ? "Evet" : "Hayir";
+
+    let durum = "Atanmadi";
+    if (t.is_completed) durum = "Tamamlandi";
+    else if (t.is_assigned) durum = "Devam Ediyor";
+
+    csvContent += `${title},${isAssigned},${isCompleted},${durum}\n`;
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+
+  link.setAttribute("href", encodedUri);
+  link.setAttribute(
+    "download",
+    `${fullName.replace(/\s+/g, "_")}_Egitim_Analiz_Raporu.csv`
+  );
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
   const handleExportTrainingReport = (trainingTitle) => {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
     csvContent += "Rapor,Egitim Adi,Durum\r\n";
@@ -510,14 +731,28 @@ const selectedSurveyRate =
       
       {/* SIDEBAR */}
       <aside className="w-72 bg-slate-900 text-white flex flex-col shadow-2xl z-20">
-  <div className="h-20 flex items-center px-8 border-b border-slate-800">
+  <div className="h-20 flex items-center px-8 border-b border-slate-800 justify-between">
+  <div className="flex items-center">
     <div className="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl mr-3 shadow-lg">
       S
     </div>
+
     <span className="text-xl font-black tracking-tighter uppercase italic">
       Sporthink
     </span>
   </div>
+
+  <button
+    onClick={() => setDarkMode(!darkMode)}
+    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+  >
+    {darkMode ? (
+      <Sun size={18} />
+    ) : (
+      <Moon size={18} />
+    )}
+  </button>
+</div>
 
   <nav className="flex-1 py-8 px-4 space-y-2 overflow-y-auto custom-scrollbar">
     <button
@@ -755,7 +990,7 @@ const selectedSurveyRate =
             Sistem Özeti 📊
           </h1>
 
-          <p className="text-slate-300 font-semibold max-w-2xl leading-7">
+          <p className="text-slate-300 font-bold mt-2">
             Personel, eğitim tamamlama, XP ve departman performanslarını tek ekrandan takip et.
           </p>
         </div>
@@ -1248,11 +1483,46 @@ const selectedSurveyRate =
                         <div className="lg:col-span-2">
                           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
                             <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                              <h2 className="text-lg font-black text-slate-900">Mevcut Eğitimler</h2>
-                              <span className="font-black text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600">{allTrainings.length} Eğitim</span>
-                            </div>
+  
+  <div>
+    <h2 className="text-lg font-black text-slate-900">
+      {academyFilter === "published" ? "Yayındaki Eğitimler" : "Taslak Eğitimler"}
+    </h2>
+
+    {/* 🔥 BURASI YENİ */}
+    <div className="flex gap-2 mt-3">
+      <button
+        type="button"
+        onClick={() => setAcademyFilter("published")}
+        className={`px-4 py-2 rounded-xl text-xs font-black ${
+          academyFilter === "published"
+            ? "bg-red-600 text-white"
+            : "bg-white text-slate-500 border"
+        }`}
+      >
+        Yayındakiler
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setAcademyFilter("draft")}
+        className={`px-4 py-2 rounded-xl text-xs font-black ${
+          academyFilter === "draft"
+            ? "bg-slate-900 text-white"
+            : "bg-white text-slate-500 border"
+        }`}
+      >
+        Taslaklar
+      </button>
+    </div>
+  </div>
+
+  <span className="font-black text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600">
+    {filteredAcademyTrainings.length} Eğitim
+  </span>
+</div>
                             <div className="p-6 flex-1 overflow-y-auto max-h-[600px]">
-                              {allTrainings.map((training) => {
+                              {filteredAcademyTrainings.map((training) => {
   const egitimId = training.id || training.egitim_id;
 
   return (
@@ -1291,6 +1561,15 @@ const selectedSurveyRate =
               <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md">
                 {training.xp || training.xp_degeri || 0} XP
               </span>
+              <span
+  className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+    academyFilter === "draft"
+      ? "text-slate-700 bg-slate-100"
+      : "text-emerald-700 bg-emerald-50"
+  }`}
+>
+  {academyFilter === "draft" ? "Taslak" : "Yayında"}
+</span>
             </div>
           </div>
         </div>
@@ -1393,15 +1672,43 @@ const selectedSurveyRate =
                       <form className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200" onSubmit={handleSaveAutoRule}>
                         <div className="space-y-4">
                           <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Eğer Personelin Departmanı Şuyken:</label><select name="departman" required className="w-full px-4 py-3 bg-white border rounded-xl font-bold"><option value="IT">IT</option><option value="Satış">Satış</option><option value="İnsan Kaynakları">İnsan Kaynakları</option></select></div>
-                          <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Şu Eğitimi Otomatik Ata:</label><select name="egitimId" required className="w-full px-4 py-3 bg-white border rounded-xl font-bold"><option value="">Eğitim Seçin...</option>{allTrainings.map(t => <option key={t.id} value={t.id}>{t.title || t.baslik}</option>)}</select></div>
+                          <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+  Şu Öğrenme Paketini Ata:
+</label>
+
+<select
+  name="yolId"
+  required
+  className="w-full px-4 py-3 bg-white border rounded-xl font-bold"
+>
+  <option value="">Paket / Rota Seçin...</option>
+
+  {learningPaths.map((path) => (
+    <option key={path.yol_id} value={path.yol_id}>
+      {path.yol_adi}
+    </option>
+  ))}
+</select></div>
                           <button type="submit" className="w-full bg-emerald-600 text-white font-black py-3 rounded-xl hover:bg-emerald-700">Kuralı Aktif Et</button>
                         </div>
                       </form>
                       <div className="flex-1 overflow-y-auto">
                         <p className="text-xs font-black uppercase text-slate-400 mb-3">Çalışan Kurallar</p>
-                        {autoRules.map(rule => (
-                          <div key={rule.kkural_id} className="flex items-center justify-between p-4 bg-white border border-emerald-200 rounded-xl mb-2"><div><p className="text-xs font-bold text-slate-500 mb-1">Eğer <span className="text-emerald-700 font-black">{rule.tetikleyici_deger}</span> ise:</p><p className="text-sm font-black text-slate-900">{rule.egitim_adi} ata.</p></div></div>
-                        ))}
+                        {learningPaths.map((path) => (
+  <div
+    key={path.yol_id}
+    className="flex items-center justify-between p-4 bg-white border border-emerald-200 rounded-xl mb-2"
+  >
+    <div>
+      <p className="text-xs font-bold text-slate-500 mb-1">
+        Öğrenme Paketi
+      </p>
+      <p className="text-sm font-black text-slate-900">
+        {path.yol_adi}
+      </p>
+    </div>
+  </div>
+))}
                       </div>
                     </div>
                     <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
@@ -1434,405 +1741,749 @@ const selectedSurveyRate =
     <div className="mb-8">
       <h1 className="text-3xl font-black text-slate-900 mb-2 flex items-center gap-3">
         <ClipboardList className="text-indigo-600" size={32} />
-        Anket & 360 Değerlendirme
+        Anket & Geribildirim Merkezi
       </h1>
 
       <p className="text-slate-500 font-medium">
-        Personel anketleri oluşturun, değerlendirme atayın ve anket analizlerini takip edin.
+        Personel anketlerini, 360 değerlendirmeleri ve eğitim sonrası kullanıcı geribildirimlerini takip edin.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8">
-        <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
-            <ClipboardList size={24} />
-          </div>
-          <p className="text-slate-400 text-xs font-black tracking-[2px]">
-            TOPLAM ANKET
-          </p>
-          <h2 className="text-3xl font-black text-slate-900 mt-1">
-            {surveyStats.totalSurveys}
-          </h2>
-        </div>
+      <div className="flex gap-3 mt-6">
+        <button
+          type="button"
+          onClick={() => setSurveyView("surveys")}
+          className={`px-5 py-3 rounded-2xl text-sm font-black ${
+            surveyView === "surveys"
+              ? "bg-indigo-600 text-white shadow-lg"
+              : "bg-white text-slate-500 border border-slate-200"
+          }`}
+        >
+          Anketler
+        </button>
 
-        <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
-          <div className="w-12 h-12 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center mb-4">
-            <Target size={24} />
-          </div>
-          <p className="text-slate-400 text-xs font-black tracking-[2px]">
-            ATANAN GÖREV
-          </p>
-          <h2 className="text-3xl font-black text-slate-900 mt-1">
-            {surveyStats.totalAssignments}
-          </h2>
-        </div>
-
-        <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
-            <CheckCircle size={24} />
-          </div>
-          <p className="text-slate-400 text-xs font-black tracking-[2px]">
-            TAMAMLANMA
-          </p>
-          <h2 className="text-3xl font-black text-slate-900 mt-1">
-            %{surveyCompletionRate}
-          </h2>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSurveyView("feedbacks")}
+          className={`px-5 py-3 rounded-2xl text-sm font-black ${
+            surveyView === "feedbacks"
+              ? "bg-red-600 text-white shadow-lg"
+              : "bg-white text-slate-500 border border-slate-200"
+          }`}
+        >
+          Geribildirimler ({feedbacks.length})
+        </button>
       </div>
+
+      {surveyView === "surveys" && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8">
+          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
+              <ClipboardList size={24} />
+            </div>
+            <p className="text-slate-400 text-xs font-black tracking-[2px]">
+              TOPLAM ANKET
+            </p>
+            <h2 className="text-3xl font-black text-slate-900 mt-1">
+              {surveyStats.totalSurveys}
+            </h2>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+            <div className="w-12 h-12 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center mb-4">
+              <Target size={24} />
+            </div>
+            <p className="text-slate-400 text-xs font-black tracking-[2px]">
+              ATANAN GÖREV
+            </p>
+            <h2 className="text-3xl font-black text-slate-900 mt-1">
+              {surveyStats.totalAssignments}
+            </h2>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
+              <CheckCircle size={24} />
+            </div>
+            <p className="text-slate-400 text-xs font-black tracking-[2px]">
+              TAMAMLANMA
+            </p>
+            <h2 className="text-3xl font-black text-slate-900 mt-1">
+              %{surveyCompletionRate}
+            </h2>
+          </div>
+        </div>
+      )}
+
+      {surveyView === "feedbacks" && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8">
+          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-4">
+              <MessageCircle size={24} />
+            </div>
+            <p className="text-slate-400 text-xs font-black tracking-[2px]">
+              TOPLAM GERİBİLDİRİM
+            </p>
+            <h2 className="text-3xl font-black text-slate-900 mt-1">
+              {feedbacks.length}
+            </h2>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+            <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mb-4">
+              <Star size={24} />
+            </div>
+            <p className="text-slate-400 text-xs font-black tracking-[2px]">
+              ORTALAMA PUAN
+            </p>
+            <h2 className="text-3xl font-black text-slate-900 mt-1">
+              {feedbacks.length > 0
+                ? (
+                    feedbacks.reduce((sum, f) => sum + Number(f.puan || 0), 0) /
+                    feedbacks.length
+                  ).toFixed(1)
+                : "0.0"}
+            </h2>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
+              <CheckCircle size={24} />
+            </div>
+            <p className="text-slate-400 text-xs font-black tracking-[2px]">
+              YORUMLU GERİBİLDİRİM
+            </p>
+            <h2 className="text-3xl font-black text-slate-900 mt-1">
+              {feedbacks.filter((f) => String(f.yorum || "").trim().length > 0).length}
+            </h2>
+          </div>
+        </div>
+      )}
     </div>
 
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
-        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
-          <div className="bg-indigo-100 p-3 rounded-xl">
-            <ClipboardList className="text-indigo-600" size={24} />
-          </div>
+    {surveyView === "feedbacks" && (
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-black text-slate-900">
-              Yeni Anket Şablonu
-            </h2>
-          </div>
-        </div>
-
-        <form
-          className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200"
-          onSubmit={handleSaveSurvey}
-        >
-          <div className="space-y-4">
-            <input
-              type="text"
-              required
-              value={newSurveyTitle}
-              onChange={(e) => setNewSurveyTitle(e.target.value)}
-              placeholder="Anket Başlığı"
-              className="w-full px-4 py-3 bg-white border rounded-xl font-bold outline-none focus:border-indigo-500"
-            />
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">
-                Anket Soruları
-              </label>
-
-              {newSurveyQuestions.map((q, index) => (
-                <input
-                  key={index}
-                  type="text"
-                  placeholder={`Soru ${index + 1}`}
-                  value={q}
-                  onChange={(e) => {
-                    const updated = [...newSurveyQuestions];
-                    updated[index] = e.target.value;
-                    setNewSurveyQuestions(updated);
-                  }}
-                  className="w-full px-4 py-3 bg-white border rounded-xl font-medium text-sm outline-none focus:border-indigo-500 mb-2"
-                />
-              ))}
-
-              <button
-                type="button"
-                onClick={() => setNewSurveyQuestions([...newSurveyQuestions, ""])}
-                className="text-indigo-600 text-xs font-bold flex items-center gap-1 mt-1"
-              >
-                <Plus size={14} />
-                Soru Ekle
-              </button>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-indigo-600 text-white font-black py-3 rounded-xl shadow-lg hover:bg-indigo-700"
-            >
-              Anketi Kaydet
-            </button>
-          </div>
-        </form>
-
-        <div className="flex-1 overflow-y-auto">
-          <p className="text-xs font-black uppercase text-slate-400 mb-3">
-            Sistemdeki Aktif Anketler
-          </p>
-
-          {surveys.length === 0 ? (
-            <p className="text-slate-400 text-sm font-semibold text-center py-8">
-              Henüz anket oluşturulmamış.
+            <p className="text-red-600 text-xs font-black tracking-[3px] mb-2">
+              EĞİTİM GERİBİLDİRİMLERİ
             </p>
-          ) : (
-            surveys.map((survey) => (
-              <div
-                key={survey.anket_id}
-                className="flex items-center justify-between p-4 bg-white border border-indigo-100 rounded-xl mb-2"
-              >
-                <p className="text-sm font-bold text-slate-900">
-                  {survey.baslik}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
-        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
-          <div className="bg-pink-100 p-3 rounded-xl">
-            <Target className="text-pink-600" size={24} />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-900">
-              360 Derece Atama
+            <h2 className="text-2xl font-black text-slate-900">
+              Kullanıcı Eğitim Yorumları
             </h2>
+            <p className="text-slate-400 font-semibold mt-2">
+  Kullanıcı gizliliği için geri bildirimler anonim gösterilir.
+</p>
           </div>
+
+          <span className="bg-red-50 text-red-600 px-4 py-2 rounded-full text-xs font-black">
+            {feedbacks.length} Kayıt
+          </span>
         </div>
 
-        <form
-          className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200"
-          onSubmit={handleAssignSurvey}
-        >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                Değerlendirilecek Personel
-              </label>
-              <select
-                name="hedef_id"
-                required
-                className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
-              >
-                <option value="">Seçiniz...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.ad} {u.soyad} ({u.departman})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                Değerlendirecek Personel
-              </label>
-              <select
-                name="degerlendiren_id"
-                required
-                className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
-              >
-                <option value="">Seçiniz...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.ad} {u.soyad} ({u.departman})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                Kullanılacak Anket
-              </label>
-              <select
-                name="anket_id"
-                required
-                className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
-              >
-                <option value="">Seçiniz...</option>
-                {surveys.map((s) => (
-                  <option key={s.anket_id} value={s.anket_id}>
-                    {s.baslik}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-pink-600 text-white font-black py-3 rounded-xl hover:bg-pink-700"
-            >
-              Atamayı Tamamla
-            </button>
-          </div>
-        </form>
-
-        <div className="flex-1 overflow-y-auto">
-          <p className="text-xs font-black uppercase text-slate-400 mb-3">
-            Güncel Değerlendirme Görevleri
-          </p>
-
-          {surveyAssignments.length === 0 ? (
-            <p className="text-slate-400 text-sm font-medium text-center py-5">
-              Henüz anket ataması yapılmamış.
+        {feedbacks.length === 0 ? (
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-10 text-center">
+            <p className="text-xl font-black text-slate-900">
+              Henüz geribildirim yok
             </p>
-          ) : (
-            surveyAssignments.map((ata) => (
-              <div
-                key={ata.atama_id}
-                className="flex items-center justify-between p-4 bg-white border border-pink-100 rounded-xl mb-2 text-sm"
-              >
-                <div>
-                  <p className="font-bold text-slate-900">
-                    {ata.degerlendiren}{" "}
-                    <span className="font-normal text-slate-500">
-                      değerlendiriyor:
-                    </span>
-                  </p>
-                  <p className="font-black text-pink-700">
-                    {ata.hedef_kullanici}
-                  </p>
-                </div>
-
-                <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded">
-                  {ata.durum}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
-        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
-          <div className="bg-emerald-100 p-3 rounded-xl">
-            <PieChart className="text-emerald-600" size={24} />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-900">
-              Anket Analizi
-            </h2>
-            <p className="text-slate-400 text-sm font-bold mt-1">
-              Anket bazlı tamamlanma analizi.
-            </p>
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">
-            Analiz Edilecek Anket
-          </label>
-
-          <select
-            value={selectedSurveyAnalysis?.anket_id || ""}
-            onChange={(e) => {
-              const selected = surveys.find(
-                (s) => String(s.anket_id) === String(e.target.value)
-              );
-              setSelectedSurveyAnalysis(selected || null);
-            }}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-emerald-500"
-          >
-            <option value="">Anket seçiniz...</option>
-            {surveys.map((survey) => (
-              <option key={survey.anket_id} value={survey.anket_id}>
-                {survey.baslik}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {!selectedSurveyAnalysis ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center mb-5">
-              <PieChart size={38} />
-            </div>
-
-            <h3 className="text-xl font-black text-slate-900 mb-2">
-              Anket seçilmedi
-            </h3>
-
-            <p className="text-slate-400 font-semibold leading-6">
-              Analiz görmek için üstten bir anket seç.
+            <p className="text-slate-500 font-semibold mt-2">
+              Kullanıcılar eğitim tamamlayıp değerlendirme yaptığında burada listelenecek.
             </p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto">
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 mb-5">
-              <p className="text-emerald-600 text-xs font-black tracking-[2px] mb-2">
-                SEÇİLİ ANKET
-              </p>
+          <div className="space-y-4">
+            {feedbacks.map((f) => (
+              <div
+                key={f.id}
+                className="bg-slate-50 border border-slate-200 rounded-3xl p-6 hover:border-red-200 transition"
+              >
+                <div className="flex items-start justify-between gap-5">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-black text-slate-900">
+                      {f.baslik || "Eğitim adı yok"}
+                    </h3>
 
-              <h3 className="text-lg font-black text-slate-900">
-                {selectedSurveyAnalysis.baslik}
-              </h3>
-            </div>
+                    <p className="text-sm font-bold text-slate-500 mt-1">
+  Anonim Kullanıcı
+</p>
 
-            <div className="grid grid-cols-2 gap-4 mb-5">
-              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
-                <p className="text-indigo-600 text-[10px] font-black uppercase">
-                  Atama
-                </p>
-                <h3 className="text-2xl font-black text-slate-900 mt-1">
-                  {selectedSurveyAssignments.length}
-                </h3>
-              </div>
-
-              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
-                <p className="text-emerald-600 text-[10px] font-black uppercase">
-                  Tamamlandı
-                </p>
-                <h3 className="text-2xl font-black text-slate-900 mt-1">
-                  {selectedSurveyCompleted}
-                </h3>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <div className="flex justify-between text-xs font-black mb-2">
-                <span className="text-slate-400">Tamamlanma Oranı</span>
-                <span className="text-emerald-600">%{selectedSurveyRate}</span>
-              </div>
-
-              <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full"
-                  style={{ width: `${selectedSurveyRate}%` }}
-                />
-              </div>
-            </div>
-
-            <p className="text-xs font-black uppercase text-slate-400 mb-3">
-              Atama Detayları
-            </p>
-
-            {selectedSurveyAssignments.length === 0 ? (
-              <p className="text-slate-400 text-sm font-semibold text-center py-8">
-                Bu ankete henüz atama yapılmamış.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {selectedSurveyAssignments.map((ata) => (
-                  <div
-                    key={ata.atama_id}
-                    className="p-4 bg-white border border-slate-200 rounded-2xl"
-                  >
-                    <p className="font-black text-slate-900 text-sm">
-                      {ata.degerlendiren || "Değerlendiren yok"}
+                    <p className="text-slate-700 font-semibold leading-7 mt-4">
+                      {f.yorum || "Yorum yazılmamış."}
                     </p>
 
-                    <p className="text-slate-500 text-xs font-bold mt-1">
-                      Değerlendirilen:{" "}
-                      <span className="text-pink-600 font-black">
-                        {ata.hedef_kullanici || "Hedef yok"}
-                      </span>
+                    <p className="text-xs text-slate-400 font-bold mt-3">
+                      {f.created_at
+                        ? new Date(f.created_at).toLocaleString("tr-TR")
+                        : ""}
                     </p>
-
-                    <span
-                      className={`inline-block mt-3 px-3 py-1 rounded-lg text-[10px] font-black ${
-                        ata.durum === "tamamlandi" ||
-                        ata.durum === "Tamamlandı" ||
-                        ata.durum === "completed"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-yellow-50 text-yellow-600"
-                      }`}
-                    >
-                      {ata.durum || "Bekliyor"}
-                    </span>
                   </div>
-                ))}
+
+                  <div className="bg-amber-50 border border-amber-200 text-amber-600 px-4 py-3 rounded-2xl font-black whitespace-nowrap">
+                    ⭐ {f.puan} / 5
+                  </div>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>
+    )}
+
+    {surveyView === "surveys" && (
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
+          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
+            <div className="bg-indigo-100 p-3 rounded-xl">
+              <ClipboardList className="text-indigo-600" size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900">
+                Yeni Anket Şablonu
+              </h2>
+            </div>
+          </div>
+
+          <form
+            className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200"
+            onSubmit={handleSaveSurvey}
+          >
+            <div className="space-y-4">
+              <input
+                type="text"
+                required
+                value={newSurveyTitle}
+                onChange={(e) => setNewSurveyTitle(e.target.value)}
+                placeholder="Anket Başlığı"
+                className="w-full px-4 py-3 bg-white border rounded-xl font-bold outline-none focus:border-indigo-500"
+              />
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">
+                  Anket Soruları
+                </label>
+
+                {newSurveyQuestions.map((q, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    placeholder={`Soru ${index + 1}`}
+                    value={q}
+                    onChange={(e) => {
+                      const updated = [...newSurveyQuestions];
+                      updated[index] = e.target.value;
+                      setNewSurveyQuestions(updated);
+                    }}
+                    className="w-full px-4 py-3 bg-white border rounded-xl font-medium text-sm outline-none focus:border-indigo-500 mb-2"
+                  />
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setNewSurveyQuestions([...newSurveyQuestions, ""])}
+                  className="text-indigo-600 text-xs font-bold flex items-center gap-1 mt-1"
+                >
+                  <Plus size={14} />
+                  Soru Ekle
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 text-white font-black py-3 rounded-xl shadow-lg hover:bg-indigo-700"
+              >
+                Anketi Kaydet
+              </button>
+            </div>
+          </form>
+
+          <div className="flex-1 overflow-y-auto">
+            <p className="text-xs font-black uppercase text-slate-400 mb-3">
+              Sistemdeki Aktif Anketler
+            </p>
+
+            {surveys.length === 0 ? (
+              <p className="text-slate-400 text-sm font-semibold text-center py-8">
+                Henüz anket oluşturulmamış.
+              </p>
+            ) : (
+              surveys.map((survey) => (
+                <div
+                  key={survey.anket_id}
+                  className="flex items-center justify-between p-4 bg-white border border-indigo-100 rounded-xl mb-2"
+                >
+                  <p className="text-sm font-bold text-slate-900">
+                    {survey.baslik}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
+          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
+            <div className="bg-pink-100 p-3 rounded-xl">
+              <Target className="text-pink-600" size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900">
+                360 Derece Atama
+              </h2>
+            </div>
+          </div>
+
+          <form
+            className="mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200"
+            onSubmit={handleAssignSurvey}
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Değerlendirilecek Personel
+                </label>
+                <select
+                  name="hedef_id"
+                  required
+                  className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
+                >
+                  <option value="">Seçiniz...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.ad} {u.soyad} ({u.departman})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Değerlendirecek Personel
+                </label>
+                <select
+                  name="degerlendiren_id"
+                  required
+                  className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
+                >
+                  <option value="">Seçiniz...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.ad} {u.soyad} ({u.departman})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Kullanılacak Anket
+                </label>
+                <select
+                  name="anket_id"
+                  required
+                  className="w-full px-4 py-3 bg-white border rounded-xl font-bold text-slate-700 outline-none"
+                >
+                  <option value="">Seçiniz...</option>
+                  {surveys.map((s) => (
+                    <option key={s.anket_id} value={s.anket_id}>
+                      {s.baslik}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-pink-600 text-white font-black py-3 rounded-xl hover:bg-pink-700"
+              >
+                Atamayı Tamamla
+              </button>
+            </div>
+          </form>
+
+          <div className="flex-1 overflow-y-auto">
+            <p className="text-xs font-black uppercase text-slate-400 mb-3">
+              Güncel Değerlendirme Görevleri
+            </p>
+
+            {surveyAssignments.length === 0 ? (
+              <p className="text-slate-400 text-sm font-medium text-center py-5">
+                Henüz anket ataması yapılmamış.
+              </p>
+            ) : (
+              surveyAssignments.map((ata) => (
+                <div
+                  key={ata.atama_id}
+                  className="flex items-center justify-between p-4 bg-white border border-pink-100 rounded-xl mb-2 text-sm"
+                >
+                  <div>
+                    <p className="font-bold text-slate-900">
+                      {ata.degerlendiren}{" "}
+                      <span className="font-normal text-slate-500">
+                        değerlendiriyor:
+                      </span>
+                    </p>
+                    <p className="font-black text-pink-700">
+                      {ata.hedef_kullanici}
+                    </p>
+                  </div>
+
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded">
+                    {ata.durum}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col h-[700px]">
+          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
+            <div className="bg-emerald-100 p-3 rounded-xl">
+              <PieChart className="text-emerald-600" size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900">
+                Anket Analizi
+              </h2>
+              <div className="flex gap-2 mt-4">
+  <button
+    type="button"
+    onClick={exportSurveyAnalysisCSV}
+    className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-black border border-emerald-100"
+  >
+    CSV
+  </button>
+
+  <button
+    type="button"
+    onClick={exportSurveyAnalysisPDF}
+    className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-black"
+  >
+    PDF
+  </button>
+</div>
+              <p className="text-slate-400 text-sm font-bold mt-1">
+                Anket bazlı tamamlanma analizi.
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">
+              Analiz Edilecek Anket
+            </label>
+
+            <select
+              value={selectedSurveyAnalysis?.anket_id || ""}
+              onChange={(e) => {
+                const selected = surveys.find(
+                  (s) => String(s.anket_id) === String(e.target.value)
+                );
+                setSelectedSurveyAnalysis(selected || null);
+              }}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-emerald-500"
+            >
+              <option value="">Anket seçiniz...</option>
+              {surveys.map((survey) => (
+                <option key={survey.anket_id} value={survey.anket_id}>
+                  {survey.baslik}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {!selectedSurveyAnalysis ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center mb-5">
+                <PieChart size={38} />
+              </div>
+
+              <h3 className="text-xl font-black text-slate-900 mb-2">
+                Anket seçilmedi
+              </h3>
+
+              <p className="text-slate-400 font-semibold leading-6">
+                Analiz görmek için üstten bir anket seç.
+              </p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto">
+              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 mb-5">
+                <p className="text-emerald-600 text-xs font-black tracking-[2px] mb-2">
+                  SEÇİLİ ANKET
+                </p>
+
+                <h3 className="text-lg font-black text-slate-900">
+                  {selectedSurveyAnalysis.baslik}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+                  <p className="text-indigo-600 text-[10px] font-black uppercase">
+                    Atama
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-900 mt-1">
+                    {selectedSurveyAssignments.length}
+                  </h3>
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                  <p className="text-emerald-600 text-[10px] font-black uppercase">
+                    Tamamlandı
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-900 mt-1">
+                    {selectedSurveyCompleted}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex justify-between text-xs font-black mb-2">
+                  <span className="text-slate-400">Tamamlanma Oranı</span>
+                  <span className="text-emerald-600">%{selectedSurveyRate}</span>
+                </div>
+
+                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full"
+                    style={{ width: `${selectedSurveyRate}%` }}
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs font-black uppercase text-slate-400 mb-3">
+  360 Sonuçları
+</p>
+
+{selectedSurveyAssignments.length === 0 ? (
+  <p className="text-slate-400 text-sm font-semibold text-center py-8">
+    Bu ankete henüz atama yapılmamış.
+  </p>
+) : (
+  <div className="space-y-3">
+    {selectedSurveyAssignments.map((ata) => (
+      <button
+        key={ata.atama_id}
+        onClick={async () => {
+  setSelectedPerson360(ata);
+  setAnalysis360(null);
+
+  if (ata.durum !== "tamamlandi") return;
+
+  try {
+    setAnalysis360Loading(true);
+    const data = await get360Analysis(ata.atama_id);
+    setAnalysis360(data);
+  } catch (err) {
+    alert(err.message || "360 analiz alınamadı.");
+  } finally {
+    setAnalysis360Loading(false);
+  }
+}}
+        className={`w-full text-left p-5 rounded-3xl border transition ${
+          selectedPerson360?.atama_id === ata.atama_id
+            ? "border-emerald-500 bg-emerald-50"
+            : "border-slate-200 bg-white hover:border-emerald-200"
+        }`}
+      >
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="font-black text-slate-900">
+              {ata.hedef_kullanici}
+            </p>
+
+            <p className="text-slate-500 text-sm font-semibold mt-1">
+              Değerlendiren: {ata.degerlendiren}
+            </p>
+          </div>
+
+          <span
+            className={`px-3 py-1 rounded-xl text-xs font-black ${
+              ata.durum === "tamamlandi"
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-yellow-100 text-yellow-700"
+            }`}
+          >
+            {ata.durum}
+          </span>
+        </div>
+      </button>
+    ))}
+  </div>
+)}
+{selectedPerson360 && (
+  <div className="mt-6 bg-slate-950 rounded-[2rem] p-6 text-white">
+    <p className="text-emerald-400 text-xs font-black tracking-[3px] mb-3">
+      360 ANALİZİ
+    </p>
+
+    <h3 className="text-2xl font-black mb-2">
+      {selectedPerson360.hedef_kullanici}
+    </h3>
+
+    <p className="text-white/60 font-semibold mb-6">
+      Bu kişinin değerlendirme özeti
+    </p>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="bg-white/10 rounded-2xl p-4">
+        <p className="text-white/50 text-xs font-black uppercase">
+          Durum
+        </p>
+        <h4 className="text-xl font-black mt-2">
+          {selectedPerson360.durum}
+        </h4>
+      </div>
+
+      <div className="bg-white/10 rounded-2xl p-4">
+        <p className="text-white/50 text-xs font-black uppercase">
+          Değerlendiren
+        </p>
+        <h4 className="text-xl font-black mt-2">
+          {selectedPerson360.degerlendiren}
+        </h4>
+      </div>
+    </div>
+
+    <div className="mt-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4">
+      <p className="text-emerald-300 text-sm font-black mb-2">
+        {analysis360Loading ? (
+  <div className="mt-5 bg-white/10 rounded-2xl p-5 text-white/70 font-bold">
+    Analiz yükleniyor...
+  </div>
+) : analysis360 ? (
+  <div className="mt-5 space-y-4">
+    <div className="grid grid-cols-2 gap-4">
+      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4">
+        <p className="text-emerald-300 text-xs font-black uppercase">
+          Ortalama Puan
+        </p>
+        <h4 className="text-3xl font-black mt-2">
+          {analysis360.ortalama} / 5
+        </h4>
+      </div>
+
+      <div className="bg-white/10 rounded-2xl p-4">
+        <p className="text-white/50 text-xs font-black uppercase">
+          Cevap Sayısı
+        </p>
+        <h4 className="text-3xl font-black mt-2">
+          {analysis360.toplamCevap}
+        </h4>
+      </div>
+    </div>
+
+    <div className="bg-white/10 rounded-2xl p-4">
+      <p className="text-white/50 text-xs font-black uppercase mb-3">
+        Soru Bazlı Sonuçlar
+      </p>
+
+      <div className="space-y-3">
+        {(analysis360.soruAnalizleri || []).map((item, index) => (
+          <div
+            key={index}
+            className="bg-white/10 rounded-xl p-3"
+          >
+            <p className="text-white font-bold text-sm leading-6">
+              {item.soru_metni}
+            </p>
+
+            <p className="text-emerald-300 font-black text-sm mt-2">
+              {item.puan ? `${item.puan} / 5` : item.cevap}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
+        <p className="text-blue-300 text-xs font-black uppercase">
+          Güçlü Alan
+        </p>
+        <p className="text-white font-bold mt-2 leading-6">
+          {analysis360.enYuksek?.soru_metni || "-"}
+        </p>
+      </div>
+
+      <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
+        <p className="text-red-300 text-xs font-black uppercase">
+          Gelişim Alanı
+        </p>
+        <p className="text-white font-bold mt-2 leading-6">
+          {analysis360.enDusuk?.soru_metni || "-"}
+        </p>
+      </div>
+    </div>
+
+    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4">
+      <p className="text-emerald-300 text-sm font-black mb-2">
+        AI YORUMU
+      </p>
+
+      <p className="text-white/80 leading-7 font-medium">
+        {analysis360.aiYorum}
+      </p>
+    </div>
+  </div>
+) : (
+  <div className="mt-5 bg-white/10 rounded-2xl p-5 text-white/60 font-bold">
+    Analiz görmek için tamamlanmış bir değerlendirme seç.
+  </div>
+)}
+      </p>
+
+      <p className="text-white/70 leading-7 font-medium">
+        Bu kişiye ait güçlü yönler, gelişim alanları ve önerilen eğitimler burada gösterilecek.
+      </p>
     </div>
   </div>
 )}
 
+              {selectedSurveyAssignments.length === 0 ? (
+                <p className="text-slate-400 text-sm font-semibold text-center py-8">
+                  Bu ankete henüz atama yapılmamış.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {selectedSurveyAssignments.map((ata) => (
+                    <div
+                      key={ata.atama_id}
+                      className="p-4 bg-white border border-slate-200 rounded-2xl"
+                    >
+                      <p className="font-black text-slate-900 text-sm">
+                        {ata.degerlendiren || "Değerlendiren yok"}
+                      </p>
+
+                      <p className="text-slate-500 text-xs font-bold mt-1">
+                        Değerlendirilen:{" "}
+                        <span className="text-pink-600 font-black">
+                          {ata.hedef_kullanici || "Hedef yok"}
+                        </span>
+                      </p>
+
+                      <span
+                        className={`inline-block mt-3 px-3 py-1 rounded-lg text-[10px] font-black ${
+                          ata.durum === "tamamlandi" ||
+                          ata.durum === "Tamamlandı" ||
+                          ata.durum === "completed"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-yellow-50 text-yellow-600"
+                        }`}
+                      >
+                        {ata.durum || "Bekliyor"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+)}
               {/* === LİDERLİK TABLOSU === */}
               {activeTab === 'leaderboard' && (
                 <div className="min-h-screen bg-[#F8FAFC] p-10">
@@ -1918,7 +2569,7 @@ const selectedSurveyRate =
     </div>
 
     <div className="space-y-5">
-      <div className="bg-slate-950 text-white rounded-[2.5rem] p-7 shadow-xl">
+      <div className="bg-slate-950 text-white px-8 pt-10 pb-8 relative min-h-[140px] flex items-center">
         <div className="w-16 h-16 rounded-3xl bg-red-600 flex items-center justify-center text-3xl mb-5">
           🏆
         </div>
@@ -2186,7 +2837,7 @@ const selectedSurveyRate =
                     key={item.id || item.duyuru_id || index}
                     className="bg-slate-50 border border-slate-200 rounded-[2rem] p-6 hover:bg-white hover:shadow-md transition"
                   >
-                    <div className="flex items-start gap-5">
+                    <div className="flex items-center gap-5 w-full">
                       <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center flex-shrink-0">
                         <Megaphone size={25} />
                       </div>
@@ -2333,37 +2984,92 @@ const selectedSurveyRate =
         </div>
       )}
 
-      {/* === PROFİL DETAYI SLIDE-OVER (YAPAY ZEKA EKLENDİ) === */}
-      {selectedPersonnel && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setSelectedPersonnel(null)}></div>
-          <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
-            <div className="bg-slate-900 p-8 pt-12 relative overflow-hidden">
-               <button onClick={() => setSelectedPersonnel(null)} className="absolute top-6 right-6 text-slate-400 hover:text-white"><X size={24}/></button>
-               <div className="flex items-center gap-5 relative z-10">
-                <div className="w-16 h-16 bg-red-600 text-white rounded-2xl flex items-center justify-center font-black text-2xl">{selectedPersonnel.ad[0]}{selectedPersonnel.soyad[0]}</div>
-                <div>
-                  <h2 className="text-2xl font-black text-white">{selectedPersonnel.ad} {selectedPersonnel.soyad}</h2>
-                  <p className="text-red-400 font-bold text-sm tracking-widest uppercase mt-1">{selectedPersonnel.departman}</p>
-                </div>
-              </div>
+     {/* === PROFİL DETAYI MODAL (YAPAY ZEKA EKLENDİ) === */}
+{selectedPersonnel && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div
+      className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+      onClick={() => setSelectedPersonnel(null)}
+    />
+
+    <div className="relative w-full max-w-6xl h-[92vh] bg-white rounded-[2.5rem] shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 overflow-hidden">
+      
+      {/* SİYAH HEADER */}
+      {/* SİYAH HEADER */}
+<div className="bg-slate-900 relative shrink-0 px-10 pt-10 pb-8">
+  <div className="absolute inset-0 overflow-hidden rounded-t-[2.5rem]">
+    <div className="absolute -right-10 -top-10 w-56 h-56 bg-red-600/20 rounded-full" />
+  </div>
+
+  <button
+    onClick={() => setSelectedPersonnel(null)}
+    className="absolute top-6 right-6 z-30 text-slate-400 hover:text-white transition"
+  >
+    <X size={30} />
+  </button>
+
+  <div className="relative z-20 flex items-center gap-6">
+    <div className="w-24 h-24 shrink-0 bg-red-600 text-white rounded-[2rem] flex items-center justify-center font-black text-4xl shadow-xl">
+      {selectedPersonnel.ad?.[0]}
+      {selectedPersonnel.soyad?.[0]}
+    </div>
+
+    <div className="flex flex-col justify-center">
+      <h2 className="text-[42px] leading-none font-black text-white">
+        {selectedPersonnel.ad} {selectedPersonnel.soyad}
+      </h2>
+
+      <p className="text-red-400 font-black text-sm tracking-[4px] uppercase mt-3">
+        {selectedPersonnel.departman} • Ekip Üyesi
+      </p>
+
+      <div className="flex gap-3 mt-5">
+        <span className="px-4 py-2 bg-white/10 rounded-2xl text-xs font-black border border-white/10 text-white">
+          {selectedPersonnel.rol || "Kullanıcı"}
+        </span>
+
+        <span className="px-4 py-2 bg-red-600 rounded-2xl text-xs font-black text-white">
+          {selectedPersonnel.xp || 0} XP
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+      {/* İÇERİK */}
+      <div className="flex-1 overflow-y-auto p-8 bg-slate-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className={`${getBadgeInfo(selectedPersonnel.xp || 0).bg} p-4 rounded-2xl border flex items-center`}>
+            <div className="mr-3">
+              {getBadgeInfo(selectedPersonnel.xp || 0).icon}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 bg-slate-50">
-              <div className="flex gap-4 mb-6">
-                <div className={`flex-[2] ${getBadgeInfo(selectedPersonnel.xp || 0).bg} p-4 rounded-2xl border flex-row items-center`}>
-                  <div className="mr-3">{getBadgeInfo(selectedPersonnel.xp || 0).icon}</div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase">Mevcut Rozet</p>
-                    <p className={`text-lg font-black ${getBadgeInfo(selectedPersonnel.xp || 0).color}`}>{getBadgeInfo(selectedPersonnel.xp || 0).name}</p>
-                  </div>
-                </div>
-                <div className="flex-1 bg-orange-50 p-4 rounded-2xl border border-orange-100 flex flex-col items-center justify-center">
-                   <Flame className="text-orange-500 mb-1" size={24} />
-                   <p className="text-base font-black text-orange-600">{selectedPersonnel.streak || 0} Gün</p>
-                </div>
-              </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-500 uppercase">
+                Mevcut Rozet
+              </p>
+              <p className={`text-lg font-black ${getBadgeInfo(selectedPersonnel.xp || 0).color}`}>
+                {getBadgeInfo(selectedPersonnel.xp || 0).name}
+              </p>
+            </div>
+          </div>
 
+          <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 flex flex-col items-center justify-center">
+            <Flame className="text-orange-500 mb-1" size={24} />
+            <p className="text-base font-black text-orange-600">
+              {selectedPersonnel.streak || 0} Gün
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleExportPersonnelTrainingReport}
+          className="w-full mb-6 flex items-center justify-center gap-2 px-5 py-4 bg-emerald-600 text-white rounded-2xl text-sm font-black hover:bg-emerald-700 shadow-lg"
+        >
+          <Download size={18} />
+          CSV Eğitim Analiz Raporu İndir
+        </button>
               {/* YENİ: YAPAY ZEKA ASİSTANI KUTUSU */}
               <div className="bg-sky-900 rounded-3xl p-6 mb-8 shadow-lg shadow-sky-900/20 relative overflow-hidden">
                  <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500 rounded-full mix-blend-screen filter blur-3xl opacity-20"></div>
@@ -2504,7 +3210,7 @@ function OverviewCard({ icon, label, value, desc, color }) {
         {label}
       </p>
 
-      <h2 className="text-3xl font-black text-slate-900 mt-2">
+      <h2 className="text-4xl font-black leading-none">
         {value}
       </h2>
 

@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   AlertCircle,
   GraduationCap,
+  Download,
+FileDown,
 } from "lucide-react";
 import {
   getInstructorTrainings,
@@ -120,6 +122,76 @@ export default function OgrenciIlerlemesi({ user }) {
   const riskCount = participants.filter(
     (p) => Number(p.progress || 0) < 50
   ).length;
+  const downloadCSV = (filename, rows) => {
+  if (!rows || rows.length === 0) {
+    window.alert("Dışa aktarılacak veri yok.");
+    return;
+  }
+
+  const headers = Object.keys(rows[0]);
+
+  const csv = [
+    headers.join(";"),
+    ...rows.map((row) =>
+      headers
+        .map((header) => {
+          const value = row[header] ?? "";
+          return `"${String(value).replaceAll('"', '""')}"`;
+        })
+        .join(";")
+    ),
+  ].join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const exportGeneralCSV = () => {
+  const rows = filteredParticipants.map((p) => ({
+    "Öğrenci": p.name || "-",
+    "Rol / Durum": p.role || p.status || "-",
+    "İlerleme (%)": p.progress || 0,
+    "Durum": Number(p.progress || 0) >= 100 ? "Tamamlandı" : "Devam Ediyor",
+  }));
+
+  downloadCSV("ogrenci-ilerlemesi-genel.csv", rows);
+};
+
+const exportStudentCSV = (person) => {
+  const rows = [
+    {
+      "Öğrenci": person.name || "-",
+      "İlerleme (%)": person.progress || 0,
+      "Quiz Skoru": person.quiz || "-",
+      "Son Aktif": person.last
+        ? new Date(person.last).toLocaleDateString("tr-TR")
+        : "-",
+    },
+    ...(person.history || []).map((item) => ({
+      "Öğrenci": person.name || "-",
+      "İçerik": item.title || "-",
+      "Tip": item.type || "-",
+      "Tamamlandı mı": item.completed ? "Evet" : "Hayır",
+      "Tarih": item.date
+        ? new Date(item.date).toLocaleDateString("tr-TR")
+        : "-",
+    })),
+  ];
+
+  downloadCSV(`${person.name || "ogrenci"}-istatistik.csv`, rows);
+};
+
+const exportGeneralPDF = () => {
+  window.print();
+};
 
   return (
     <div style={styles.page}>
@@ -192,7 +264,17 @@ export default function OgrenciIlerlemesi({ user }) {
             <p style={styles.sectionMini}>ÖĞRENCİ TAKİP LİSTESİ</p>
             <h2 style={styles.sectionTitle}>Katılımcılar</h2>
           </div>
+          <div style={styles.exportButtons}>
+  <button style={styles.exportBtn} onClick={exportGeneralCSV}>
+    <Download size={17} />
+    CSV
+  </button>
 
+  <button style={styles.exportBtn} onClick={exportGeneralPDF}>
+    <FileDown size={17} />
+    PDF
+  </button>
+</div>
           <div style={styles.searchBox}>
             <Search size={20} color="#CBD5E1" />
             <input
@@ -278,6 +360,7 @@ export default function OgrenciIlerlemesi({ user }) {
   person={selectedParticipant}
   egitimId={selectedEgitimId}
   user={user}
+  exportStudentCSV={exportStudentCSV}
   onClose={() => setSelectedParticipant(null)}
   onReminder={() => setReminderOpen(true)}
 />
@@ -301,6 +384,7 @@ function ParticipantModal({
   onReminder,
   egitimId,
   user,
+  exportStudentCSV,
 }) {
   return (
     <div style={styles.modalOverlay}>
@@ -365,7 +449,23 @@ function ParticipantModal({
             label="SON AKTİF"
           />
         </div>
+        <div style={styles.modalExportRow}>
+  <button
+    style={styles.modalExportBtn}
+    onClick={() => exportStudentCSV(person)}
+  >
+    <Download size={16} />
+    Öğrenci CSV
+  </button>
 
+  <button
+    style={styles.modalExportBtn}
+    onClick={() => window.print()}
+  >
+    <FileDown size={16} />
+    Öğrenci PDF
+  </button>
+</div>
         <h3 style={styles.modalSectionTitle}>İçerik Etkileşim Geçmişi</h3>
 
         {(person.history || []).length === 0 ? (
@@ -434,28 +534,53 @@ function ReminderModal({ onClose, person, egitimId, user }) {
         </div>
 
         {templates.map((item) => (
-          <button
-            key={item}
-            style={styles.templateRow}
-            onClick={async () => {
-              try {
-                await sendParticipantReminder({
-                  userId: person?.id,
-                  egitimId,
-                  gonderenId: user?.id || user?.kullanici_id || 1,
-                });
+  <button
+    key={item}
+    style={styles.templateRow}
+    onClick={async () => {
+      try {
+        let baslik = "";
+        let mesaj = "";
+        let tip = "";
 
-                window.alert("Hatırlatma gönderildi.");
-                onClose();
-              } catch (error) {
-                window.alert(error.message || "Hatırlatma gönderilemedi.");
-              }
-            }}
-          >
-            {item}
-            <ChevronRight size={20} color="#CBD5E1" />
-          </button>
-        ))}
+        if (item === "Eğitimi tamamlaman bekleniyor.") {
+          baslik = "Eğitim Hatırlatması";
+          mesaj = "Eğitimi tamamlaman bekleniyor.";
+          tip = "duyuru";
+        }
+
+        if (item === "Sana yeni bir görev atandı.") {
+          baslik = "Yeni Görev";
+          mesaj = "Sana yeni bir görev atandı.";
+          tip = "duyuru";
+        }
+
+        if (item === "Quiz için son gün!") {
+          baslik = "Quiz Hatırlatması";
+          mesaj = "Quiz için son gün!";
+          tip = "duyuru";
+        }
+
+        await sendParticipantReminder({
+          userId: person?.id,
+          egitimId,
+          gonderenId: user?.id || user?.kullanici_id || 1,
+          baslik,
+          mesaj,
+          tip,
+        });
+
+        window.alert("Hatırlatma gönderildi.");
+        onClose();
+      } catch (error) {
+        window.alert(error.message || "Hatırlatma gönderilemedi.");
+      }
+    }}
+  >
+    {item}
+    <ChevronRight size={20} color="#CBD5E1" />
+  </button>
+))}
       </div>
     </div>
   );
@@ -1029,4 +1154,44 @@ const styles = {
     placeItems: "center",
     margin: "0 auto 18px",
   },
+  exportButtons: {
+  display: "flex",
+  gap: 10,
+},
+
+exportBtn: {
+  height: 48,
+  borderRadius: 16,
+  border: "none",
+  backgroundColor: DARK,
+  color: "#fff",
+  padding: "0 16px",
+  fontSize: 12,
+  fontWeight: 900,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+},
+
+modalExportRow: {
+  display: "flex",
+  gap: 10,
+  marginBottom: 18,
+},
+
+modalExportBtn: {
+  height: 44,
+  borderRadius: 14,
+  border: "none",
+  backgroundColor: "#fff",
+  color: DARK,
+  padding: "0 14px",
+  fontSize: 12,
+  fontWeight: 900,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+},
 };

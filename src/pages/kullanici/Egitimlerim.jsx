@@ -36,6 +36,7 @@ import {
   startTraining,
   getUserHome,
   getTrainingAISuggestion,
+  assignTrainingToDepartment,
 } from "../../services/api";
 
 export default function Egitimlerim({ user, setUser }) {
@@ -51,8 +52,13 @@ export default function Egitimlerim({ user, setUser }) {
   const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [extraFilter, setExtraFilter] = useState("Tümü");
 
-  const tabs = ["Devam Edenler", "Tüm Eğitimler", "Tamamlananlar"];
+  const tabs = [
+  "Devam Edenler",
+  "Tamamlanan Eğitimler",
+];
 
   const categories = [
     "Tümü",
@@ -71,7 +77,7 @@ export default function Egitimlerim({ user, setUser }) {
   useEffect(() => {
     if (location.state?.openSource === "Keşfet") {
       setActiveSource("Keşfet");
-      setActiveTab("Tüm Eğitimler");
+      setActiveTab("Devam Edenler");
     }
   }, [location.state]);
 
@@ -94,19 +100,31 @@ export default function Egitimlerim({ user, setUser }) {
         title: item.title || "İsimsiz Eğitim",
         category: item.category || "Genel",
         assignmentType: item.assignment_type || "Yönetici Atadı",
-        progress: item.is_completed ? 100 : Number(item.progress || 0),
+        progress:
+  item.is_completed ||
+  item.durum === "tamamlandi" ||
+  Number(item.progress || item.tamamlanma_orani || 0) >= 100
+    ? 100
+    : Number(item.progress || item.tamamlanma_orani || 0),
         duration: item.duration || "0 dk",
         xp: Number(item.xp) || 0,
         status:
-          item.durum === "yeniden_atandi" ||
-          item.durum === "yeniden_baslatildi"
-            ? "reassigned"
-            : item.is_completed
-            ? "completed"
-            : "continuing",
-        mandatory: item.assignment_type === "Yönetici Atadı",
+  item.durum === "yeniden_atandi" ||
+  item.durum === "yeniden_baslatildi"
+    ? "reassigned"
+    : item.is_completed ||
+      item.durum === "tamamlandi" ||
+      Number(item.progress || item.tamamlanma_orani || 0) >= 100
+    ? "completed"
+    : "continuing",
+       mandatory:
+  item.assignment_type !== "Kendi Seçti" &&
+  item.assignmentType !== "Başlanabilir",
         isStarted: true,
-        source: "assigned",
+        source:
+  item.assignment_type === "Kendi Seçti"
+    ? "discover"
+    : "assigned",
         instructor: item.instructor || "Sporthink Akademi",
         assignedBy: item.atayan_kisi || item.assignedBy || "Sporthink Akademi",
         assignedByRole: item.atayan_rol || item.assignedByRole || "Sistem",
@@ -121,9 +139,11 @@ export default function Egitimlerim({ user, setUser }) {
 
       const mappedCatalog = (catalogTrainings || [])
         .filter(
-          (item) =>
-            !item.is_assigned && !item.is_started && !item.is_completed
-        )
+  (item) =>
+    !item.is_assigned &&
+    !item.is_started &&
+    !item.is_completed
+)
         .map((item) => ({
           id: String(item.id),
           title: item.title || "İsimsiz Eğitim",
@@ -170,46 +190,82 @@ export default function Egitimlerim({ user, setUser }) {
   );
 
   const filteredData = useMemo(() => {
-    let data = [...trainings];
+  let data = [...trainings];
 
-    if (activeSource === "Atananlar") {
-      data = data.filter((item) => item.source === "assigned");
-    } else {
-      data = data.filter((item) => item.source === "discover");
-    }
+  if (activeSource === "Atananlar") {
+    data = data.filter((item) => item.source === "assigned");
+  }
 
-    if (activeTab === "Devam Edenler") {
-      data = data.filter(
-        (item) =>
-          item.status === "continuing" ||
-          item.status === "new" ||
-          item.status === "reassigned"
-      );
-    }
+  if (activeSource === "Keşfet") {
+    data = data.filter((item) => item.source === "discover");
+  }
 
-    if (activeTab === "Tamamlananlar") {
-      data = data.filter((item) => item.status === "completed");
-    }
+  if (extraFilter === "Tümü") {
+  if (activeTab === "Devam Edenler") {
+    data = data.filter(
+      (item) =>
+        item.status === "continuing" ||
+        item.status === "new" ||
+        item.status === "reassigned"
+    );
+  }
 
-    if (activeCategory !== "Tümü") {
-      data = data.filter((item) => item.category === activeCategory);
-    }
+  if (activeTab === "Tamamlanan Eğitimler") {
+    data = data.filter((item) => item.status === "completed");
+  }
+}
 
-    const query = search.trim().toLowerCase();
+  if (activeTab === "Tamamlanan Eğitimler") {
+    data = data.filter((item) => item.status === "completed");
+  }
 
-    if (query.length > 0) {
-      data = data.filter(
-        (item) =>
-          String(item.title || "").toLowerCase().includes(query) ||
-          String(item.category || "").toLowerCase().includes(query) ||
-          String(item.assignmentType || "").toLowerCase().includes(query) ||
-          String(item.assignedBy || "").toLowerCase().includes(query) ||
-          String(item.assignedByRole || "").toLowerCase().includes(query)
-      );
-    }
+  if (activeCategory !== "Tümü") {
+    data = data.filter((item) => item.category === activeCategory);
+  }
+  if (extraFilter === "Zorunlu") {
+  data = data.filter((item) => item.mandatory);
+}
 
-    return data;
-  }, [activeSource, activeTab, activeCategory, search, trainings]);
+if (extraFilter === "Opsiyonel") {
+  data = data.filter((item) => !item.mandatory);
+}
+
+if (extraFilter === "Devam Eden") {
+  data = data.filter((item) => item.status === "continuing");
+}
+
+if (extraFilter === "Tamamlanan") {
+  data = data.filter((item) => item.status === "completed");
+}
+
+if (extraFilter === "Yeni") {
+  data = data.filter((item) => item.status === "new");
+}
+
+  const query = search.trim().toLowerCase();
+
+  if (query.length > 0) {
+    data = data.filter(
+      (item) =>
+        String(item.title || "").toLowerCase().includes(query) ||
+        String(item.category || "").toLowerCase().includes(query) ||
+        String(item.assignmentType || "").toLowerCase().includes(query) ||
+        String(item.assignedBy || "").toLowerCase().includes(query) ||
+        String(item.assignedByRole || "").toLowerCase().includes(query)
+    );
+  }
+
+  return data;
+}, [
+  activeSource,
+  activeTab,
+  activeCategory,
+  extraFilter,
+  search,
+  trainings,
+]);
+
+
 
   const handleTrainingPress = async (item) => {
     if (item.status === "new") {
@@ -225,6 +281,28 @@ export default function Egitimlerim({ user, setUser }) {
 
     navigate(`/user/egitim-detay/${item.id}`);
   };
+
+  const handleAssignToMyDepartment = async (item) => {
+  if (user?.role !== "DEPT_YONETICI") return;
+
+  const ok = window.confirm(
+    `"${item.title}" eğitimi ${user.department} departmanındaki personele atanacak. Devam edilsin mi?`
+  );
+
+  if (!ok) return;
+
+  try {
+    const result = await assignTrainingToDepartment(
+      user.department,
+      item.id,
+      user.id
+    );
+
+    alert(result.message || "Eğitim departmana atandı.");
+  } catch (error) {
+    alert(error.message || "Departmana atama yapılamadı.");
+  }
+};
 
   if (loading) {
     return (
@@ -247,7 +325,26 @@ export default function Egitimlerim({ user, setUser }) {
       onSearchChange={setSearch}
     >
       <main className="flex-1 bg-[#F8FAFC] min-h-screen">
-        <section className="p-10">
+  <section className="p-10">
+
+    {["IK_YONETICI", "DEPT_YONETICI"].includes(user?.role) && (
+      <div className="mb-6">
+        <button
+          onClick={() => {
+            if (user?.role === "IK_YONETICI") {
+              navigate("/admin");
+            } else if (user?.role === "DEPT_YONETICI") {
+              navigate("/department");
+            }
+          }}
+          className="px-5 py-2 bg-slate-900 text-white rounded-xl font-bold"
+        >
+          ← Panele Dön
+        </button>
+      </div>
+    )}
+
+    {/* devam eden kod */}
           <div className="flex items-start justify-between mb-8">
             <div>
               <h1 className="text-4xl font-black text-slate-950 flex items-center gap-3">
@@ -273,7 +370,7 @@ export default function Egitimlerim({ user, setUser }) {
             <StatCard title="Kazanılan XP" value={completedXp} icon={Trophy} color="amber" />
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-[2.2rem] shadow-sm overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-[2.2rem] shadow-sm overflow-visible relative">
             <div className="p-6 flex flex-wrap items-center justify-between gap-4">
               <div className="bg-slate-100 p-2 rounded-3xl flex gap-2">
                 <SourceButton
@@ -308,6 +405,47 @@ export default function Egitimlerim({ user, setUser }) {
                   ))}
                 </select>
               </div>
+             <div className="relative">
+  <button
+    onClick={() => setShowFilters(!showFilters)}
+    className="h-12 px-5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center gap-3 font-black text-slate-700 hover:bg-slate-100 transition"
+  >
+    <Filter size={18} />
+    Filtrele
+  </button>
+
+  {showFilters && (
+    <div className="absolute right-0 top-14 z-50 w-64 bg-white border border-slate-200 rounded-[1.5rem] shadow-2xl p-3">
+      {[
+        "Tümü",
+        "Zorunlu",
+        "Opsiyonel",
+        "Devam Eden",
+        "Tamamlanan",
+        "Yeni",
+      ].map((filter) => (
+        <button
+          key={filter}
+          onClick={() => {
+            setExtraFilter(filter);
+            setShowFilters(false);
+          }}
+          className={`w-full text-left px-4 py-3 rounded-2xl font-black transition ${
+            extraFilter === filter
+              ? "bg-red-600 text-white"
+              : "hover:bg-slate-100 text-slate-700"
+          }`}
+        >
+          {filter}
+        </button>
+      ))}
+
+      <div className="mt-3 pt-3 border-t border-slate-100 text-xs font-black text-slate-400 px-2">
+        Aktif: {extraFilter}
+      </div>
+    </div>
+  )}
+</div>
             </div>
 
             <div className="px-6 py-7 border-y border-slate-100 flex gap-4">
@@ -341,8 +479,8 @@ export default function Egitimlerim({ user, setUser }) {
             <div className="px-6 pt-7 pb-4 flex items-center justify-between">
               <h2 className="text-sm font-black tracking-[3px] text-slate-400">
                 {activeSource === "Atananlar"
-                  ? "ATANAN EĞİTİMLERİN"
-                  : "SANA UYGUN İÇERİKLER"}
+  ? "YÖNETİCİ / İK ATAMALARI"
+: "YAYINLANAN / KEŞFET EĞİTİMLERİ"}
               </h2>
 
               <span className="text-xs font-black text-slate-400">
@@ -376,10 +514,12 @@ export default function Egitimlerim({ user, setUser }) {
                   <tbody>
                     {filteredData.map((item) => (
                       <TrainingRow
-                        key={item.id}
-                        item={item}
-                        onClick={() => handleTrainingPress(item)}
-                      />
+  key={item.id}
+  item={item}
+  user={user}
+  onClick={() => handleTrainingPress(item)}
+  onAssignDepartment={() => handleAssignToMyDepartment(item)}
+/>
                     ))}
                   </tbody>
                 </table>
@@ -439,7 +579,7 @@ function SourceButton({ active, icon: Icon, label, count, onClick }) {
   );
 }
 
-function TrainingRow({ item, onClick }) {
+function TrainingRow({ item, user, onClick, onAssignDepartment }) {
   const isCompleted = item.status === "completed";
   const isNew = item.status === "new";
   const isReassigned = item.status === "reassigned";
@@ -459,6 +599,25 @@ function TrainingRow({ item, onClick }) {
             <h3 className="text-xl font-black text-slate-950 leading-tight max-w-[260px]">
               {item.title}
             </h3>
+            <div className="flex flex-wrap gap-2 mt-3">
+  {item.assignmentType && (
+    <span
+      className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${
+        item.assignmentType.includes("Önerdi")
+          ? "bg-blue-50 text-blue-600 border-blue-200"
+          : "bg-red-50 text-red-600 border-red-200"
+      }`}
+    >
+      {item.assignmentType.toUpperCase()}
+    </span>
+  )}
+
+  {item.isReassigned && (
+    <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-orange-50 text-orange-600 border border-orange-200">
+      YENİDEN ATANDI
+    </span>
+  )}
+</div>
           </div>
         </div>
       </td>
@@ -506,6 +665,18 @@ function TrainingRow({ item, onClick }) {
       </td>
 
       <td className="px-6 py-7 text-right">
+        {user?.role === "DEPT_YONETICI" && (
+  <button
+    type="button"
+    onClick={(e) => {
+      e.stopPropagation();
+      onAssignDepartment();
+    }}
+    className="h-12 px-5 rounded-2xl inline-flex items-center gap-2 font-black text-sm bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 mr-3"
+  >
+    Departmanıma Ata
+  </button>
+)}
         <button
           onClick={onClick}
           className={`h-12 px-7 rounded-2xl inline-flex items-center gap-2 font-black text-sm transition group-hover:scale-[1.02] ${
@@ -519,7 +690,7 @@ function TrainingRow({ item, onClick }) {
           }`}
         >
           {isCompleted
-            ? "YENİDEN İZLE"
+            ? "İNCELE"
             : isReassigned
             ? "TEKRAR BAŞLA"
             : isNew

@@ -22,6 +22,7 @@ import {
   Trophy,
   Umbrella,
   User,
+  Lock,
   ClipboardList,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -36,7 +37,7 @@ export default function LiderlikTablosu({ user, setUser }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const tabs = ["Haftalık", "Aylık", "Ödül Pazarı"];
+const tabs = ["Haftalık", "Aylık", "Ödül Pazarı", "Rozetlerim"];
 
   const menuSections = [
     {
@@ -64,7 +65,7 @@ export default function LiderlikTablosu({ user, setUser }) {
       items: [
         { label: "Liderlik Tablosu", icon: Trophy, path: "/user/liderlik", active: true },
         { label: "Ödül Pazarı", icon: Store, path: "/user/odul-pazari" },
-        { label: "Rozetlerim", icon: Medal, path: "/user/rozetler" },
+        
       ],
     },
     {
@@ -187,7 +188,11 @@ const restLeaders = useMemo(() => filteredLeaders.slice(3), [filteredLeaders]);
                 Oyunlaştırma merkezi
               </p>
               <h1 className="text-4xl font-black text-slate-950">
-                {activeTab === "Ödül Pazarı" ? "Ödül Pazarı 🎁" : "Liderlik Tablosu 🏆"}
+                {activeTab === "Ödül Pazarı"
+  ? "Ödül Pazarı 🎁"
+  : activeTab === "Rozetlerim"
+  ? "Rozetlerim 🏅"
+  : "Liderlik Tablosu 🏆"}
               </h1>
               <p className="text-slate-500 font-semibold mt-2">
                 XP sıralamanı takip et, kazandığın coinleri ödüllerle değiştir.
@@ -226,23 +231,24 @@ const restLeaders = useMemo(() => filteredLeaders.slice(3), [filteredLeaders]);
               </div>
             </div>
           ) : activeTab === "Ödül Pazarı" ? (
-            <RewardMarket
-              rewards={rewards}
-              currentUser={currentUser}
-              renderRewardIcon={renderRewardIcon}
-              onRequest={handleRewardRequest}
-            />
-          ) : (
-            <Leaderboard
-  leaders={leaders}
-  topThree={topThree}
-  restLeaders={restLeaders}
-  currentUser={currentUser}
-  authUser={user}
-  onProfileClick={(id) => navigate(`/user/profil-onizleme/${id}`)}
-  leaders={filteredLeaders}
-/>
-          )}
+  <RewardMarket
+    rewards={rewards}
+    currentUser={currentUser}
+    renderRewardIcon={renderRewardIcon}
+    onRequest={handleRewardRequest}
+  />
+) : activeTab === "Rozetlerim" ? (
+  <RozetlerSection user={user} />
+) : (
+  <Leaderboard
+    leaders={filteredLeaders}
+    topThree={topThree}
+    restLeaders={restLeaders}
+    currentUser={currentUser}
+    authUser={user}
+    onProfileClick={(id) => navigate(`/user/profil-onizleme/${id}`)}
+  />
+)}
         </section>
       </main>
     </KullaniciLayout>
@@ -343,6 +349,158 @@ function Leaderboard({ leaders, topThree, restLeaders, currentUser, authUser, on
         </div>
       </div>
     </>
+  );
+}
+
+function RozetlerSection({ user }) {
+  const [badges, setBadges] = useState([]);
+
+  useEffect(() => {
+    loadBadges();
+  }, []);
+
+  const loadBadges = async () => {
+    try {
+      const res = await fetch(
+        `http://localhost:4000/api/user/public/${user.id}`
+      );
+
+      const data = await res.json();
+
+      setBadges(data.badges || []);
+    } catch (err) {
+      console.log(err);
+      setBadges([]);
+    }
+  };
+
+  const lockedBadges = [
+    {
+      id: "locked-1",
+      title: "Bilgi Avcısı",
+      description: "3 eğitimi tamamlayınca açılır.",
+      icon: "🎯",
+    },
+    {
+      id: "locked-2",
+      title: "Öğrenme Ustası",
+      description: "5 eğitimi tamamlayınca açılır.",
+      icon: "🏆",
+    },
+    {
+      id: "locked-3",
+      title: "Disiplinli Öğrenci",
+      description: "7 günlük öğrenme serisi yapınca açılır.",
+      icon: "🔥",
+    },
+    {
+      id: "locked-4",
+      title: "XP Toplayıcı",
+      description: "1000 XP kazanınca açılır.",
+      icon: "⭐",
+    },
+  ];
+
+  return (
+    <div>
+      {/* HERO */}
+      <div className="bg-slate-950 text-white rounded-[2rem] p-8 mb-8 relative overflow-hidden">
+        <div className="absolute -right-10 -top-10 w-44 h-44 bg-white/10 rounded-full" />
+
+        <div className="flex items-center gap-3 mb-4">
+          <Medal className="text-red-400" />
+
+          <p className="text-slate-400 font-black text-xs tracking-[3px]">
+            ROZET SİSTEMİ
+          </p>
+        </div>
+
+        <h2 className="text-3xl font-black max-w-3xl">
+          Eğitimleri tamamla, streak oluştur ve başarı rozetlerini kazan.
+        </h2>
+
+        <p className="text-slate-400 font-semibold mt-4 max-w-2xl">
+          Tamamlanan eğitimler, XP puanları ve günlük öğrenme serilerine göre
+          özel rozetler açılır.
+        </p>
+      </div>
+
+      {/* KAZANILAN */}
+      <h2 className="text-sm font-black tracking-[3px] text-slate-400 mb-5">
+        KAZANILAN ROZETLER
+      </h2>
+
+      {badges.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-[2rem] p-10 text-center mb-10">
+          <div className="text-5xl mb-5">🏅</div>
+
+          <h3 className="text-2xl font-black text-slate-950">
+            Henüz rozet kazanmadın
+          </h3>
+
+          <p className="text-slate-500 font-semibold mt-2">
+            İlk eğitimini tamamlayınca rozetlerin burada görünecek.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-4 gap-5 mb-10">
+          {badges.map((badge) => (
+            <div
+              key={badge.id}
+              className="bg-white border border-red-100 rounded-[2rem] p-6 shadow-sm hover:shadow-lg transition"
+            >
+              <div className="text-5xl mb-5 text-center">
+                {badge.icon || "🏅"}
+              </div>
+
+              <h3 className="text-xl font-black text-slate-950 text-center">
+                {badge.title}
+              </h3>
+
+              <p className="text-sm text-slate-500 text-center font-semibold mt-3">
+                {badge.description}
+              </p>
+
+              <div className="mt-5 flex items-center justify-center">
+                <span className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 text-xs font-black">
+                  KAZANILDI
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* KİLİTLİ */}
+      <h2 className="text-sm font-black tracking-[3px] text-slate-400 mb-5">
+        KİLİTLİ ROZETLER
+      </h2>
+
+      <div className="grid grid-cols-4 gap-5">
+        {lockedBadges.map((badge) => (
+          <div
+            key={badge.id}
+            className="bg-slate-100 border border-slate-200 rounded-[2rem] p-6 shadow-sm opacity-70 relative"
+          >
+            <div className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white flex items-center justify-center text-slate-400">
+              <Lock size={18} />
+            </div>
+
+            <div className="text-5xl mb-5 text-center grayscale">
+              {badge.icon}
+            </div>
+
+            <h3 className="text-xl font-black text-slate-500 text-center">
+              {badge.title}
+            </h3>
+
+            <p className="text-sm text-slate-400 text-center font-semibold mt-3">
+              {badge.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

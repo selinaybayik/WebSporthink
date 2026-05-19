@@ -79,24 +79,6 @@ export default function Ayarlar({ user, setUser }) {
 
       {/* CONTENT */}
       <main className="flex-1 min-h-screen bg-slate-50">
-        {/* HEADER */}
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10">
-          <div className="w-[430px] h-12 bg-slate-100 rounded-2xl flex items-center px-4 gap-3">
-            <Search size={20} className="text-slate-400" />
-
-            <input
-              placeholder="Ayarlarda ara..."
-              className="bg-transparent outline-none w-full text-sm font-semibold text-slate-600"
-            />
-          </div>
-
-          <button
-            onClick={() => navigate("/user/bildirimler")}
-            className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/20"
-          >
-            <Bell size={22} />
-          </button>
-        </header>
 
         {/* BODY */}
         <section className="p-10">

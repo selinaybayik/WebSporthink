@@ -29,13 +29,15 @@ import {
   Flag,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getRoadmap } from "../../services/api";
+import { getRoadmap , getUserLearningPackages} from "../../services/api";
 
 export default function YolHaritam({ user, setUser }) {
   const navigate = useNavigate();
 
   const [roadmapData, setRoadmapData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [learningPackages, setLearningPackages] = useState([]);
+const [openPackageId, setOpenPackageId] = useState(null);
 
   useEffect(() => {
     loadRoadmap();
@@ -46,8 +48,13 @@ export default function YolHaritam({ user, setUser }) {
 
     try {
       setLoading(true);
-      const data = await getRoadmap(user.id);
-      setRoadmapData(data);
+      const [data, packages] = await Promise.all([
+  getRoadmap(user.id),
+  getUserLearningPackages(user.id),
+]);
+
+setRoadmapData(data);
+setLearningPackages(Array.isArray(packages) ? packages : []);
     } catch (error) {
       console.log("Yol haritası yüklenemedi:", error.message);
       setRoadmapData(null);
@@ -130,8 +137,8 @@ export default function YolHaritam({ user, setUser }) {
             />
 
             <ModernStatCard
-              title="Yol Adımı"
-              value={yolAdimlari.length}
+  title="Öğrenme Paketi"
+  value={learningPackages.length}
               icon={Map}
               color="blue"
               desc="Rotandaki toplam adım"
@@ -182,7 +189,124 @@ export default function YolHaritam({ user, setUser }) {
                   </div>
                 )}
               </div>
+                <div className="bg-white rounded-[2.5rem] border border-slate-200 p-7 shadow-sm">
+  <div className="flex items-center justify-between mb-7">
+    <PanelTitle icon={Route} title="Atanan Öğrenme Paketlerim" />
 
+    <span className="px-4 py-2 rounded-2xl bg-blue-50 text-blue-600 text-xs font-black">
+      {learningPackages.length} PAKET
+    </span>
+  </div>
+
+  {learningPackages.length === 0 ? (
+    <EmptyCard
+      title="Atanmış öğrenme paketi yok"
+      text="Departmanına atanan paketler burada görünecek."
+    />
+  ) : (
+    <div className="space-y-5">
+      {learningPackages.map((pack) => {
+        const isOpen = String(openPackageId) === String(pack.yol_id);
+        const total = Number(pack.toplam_egitim || 0);
+        const completed = Number(pack.tamamlanan_egitim || 0);
+        const progress =
+          total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        return (
+          <div
+            key={pack.yol_id}
+            className="bg-slate-50 border border-slate-100 rounded-[2rem] overflow-hidden"
+          >
+            <button
+              onClick={() =>
+                setOpenPackageId(isOpen ? null : pack.yol_id)
+              }
+              className="w-full p-6 flex items-center justify-between gap-5 text-left hover:bg-white transition"
+            >
+              <div>
+                <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black mb-3">
+                  <Route size={13} />
+                  ÖĞRENME PAKETİ
+                </span>
+
+                <h3 className="text-2xl font-black text-slate-950">
+                  {pack.yol_adi}
+                </h3>
+
+                <p className="text-slate-500 font-bold text-sm mt-2">
+                  {completed}/{total} eğitim tamamlandı
+                </p>
+              </div>
+
+              <div className="min-w-[220px]">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="font-black text-slate-950">
+                    %{progress}
+                  </span>
+
+                  <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 rounded-full"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+
+                <span className="inline-flex items-center gap-2 bg-slate-950 text-white px-5 py-3 rounded-2xl font-black text-sm">
+                  {isOpen ? "Kapat" : "Paketi Gör"}
+                  <ChevronRight size={17} />
+                </span>
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="px-6 pb-6 space-y-3">
+                {(pack.egitimler || []).map((egitim, index) => {
+                  const egitimProgress = Number(egitim.progress || 0);
+                  const isDone = egitimProgress >= 100;
+
+                  return (
+                    <button
+                      key={egitim.egitim_id}
+                      onClick={() =>
+                        navigate(`/user/egitim-detay/${egitim.egitim_id}`)
+                      }
+                      className="w-full bg-white border border-slate-100 hover:border-blue-200 rounded-2xl p-5 grid grid-cols-[48px_1fr_auto] gap-4 items-center text-left transition"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">
+                        {index + 1}
+                      </div>
+
+                      <div>
+                        <h4 className="text-lg font-black text-slate-950">
+                          {egitim.baslik}
+                        </h4>
+
+                        <p className="text-slate-400 font-bold text-sm mt-1">
+                          {isDone ? "Tamamlandı" : "Devam ediyor"}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-slate-500">
+                          %{egitimProgress}
+                        </span>
+
+                        <span className="bg-red-600 text-white px-4 py-2 rounded-xl font-black text-xs">
+                          Devam Et
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  )}
+</div>
               <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <PanelTitle icon={Compass} title="Öğrenme Rotan" />

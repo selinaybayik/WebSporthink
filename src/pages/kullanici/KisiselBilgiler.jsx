@@ -20,6 +20,8 @@ import {
   Store,
   Trophy,
   User,
+  ArrowLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
@@ -175,6 +177,16 @@ export default function KisiselBilgiler({ user, setUser }) {
         </header>
 
         <section className="p-10">
+          <div className="mb-6">
+  <button
+    type="button"
+    onClick={() => navigate("/user/ayarlar")}
+    className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border border-slate-200 text-slate-700 font-black hover:bg-slate-50 hover:border-red-200 transition shadow-sm"
+  >
+    <ArrowLeft size={18} />
+    Ayarlara Dön
+  </button>
+</div>
           <div className="mb-10">
             <p className="text-slate-500 font-bold mb-2">
               Profil düzenleme alanı

@@ -20,11 +20,16 @@ import {
   Send,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getUserHome } from "../../services/api";
+import { getUserHome, askNavigationAssistant } from "../../services/api";
 
 export default function KullaniciAnaSayfa({ user, setUser }) {
   const navigate = useNavigate();
   const [homeData, setHomeData] = useState(null);
+  const [assistantLoading, setAssistantLoading] = useState(false);
+  const [assistantInput, setAssistantInput] = useState("");
+const [assistantMessage, setAssistantMessage] = useState(
+  `Merhaba ${user?.name || ""} 👋 Sana nasıl yardımcı olabilirim?`
+);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,6 +88,35 @@ export default function KullaniciAnaSayfa({ user, setUser }) {
   const stats = homeData?.stats || {};
   const continueTraining = homeData?.continueTraining;
   const unread = homeData?.notifications?.unread || 0;
+  const handleAssistantNavigation = async (messageFromButton) => {
+  const msg = String(messageFromButton || assistantInput || "").trim();
+
+  if (!msg) return;
+
+  try {
+    setAssistantLoading(true);
+    setAssistantMessage("Sana en uygun sayfayı buluyorum...");
+
+    const data = await askNavigationAssistant({
+      userId: user?.id,
+      message: msg,
+    });
+
+    setAssistantMessage(data.reply || "Seni yönlendiriyorum.");
+
+    if (data.route) {
+  setTimeout(() => {
+    navigate(data.route);
+  }, 700);
+}
+  } catch (err) {
+    setAssistantMessage(
+      "Şu an AI yanıt veremedi. Eğitimler, anketler, duyurular veya liderlik yazabilirsin."
+    );
+  } finally {
+    setAssistantLoading(false);
+  }
+};
 
   return (
     <KullaniciLayout
@@ -116,6 +150,72 @@ export default function KullaniciAnaSayfa({ user, setUser }) {
           </button>
         </div>
 
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#07111F] via-[#111827] to-[#1F2937] text-white p-8 shadow-xl border border-slate-800">
+  <div className="flex items-start gap-5">
+    <div className="w-20 h-20 rounded-[2rem] bg-red-600/20 border border-red-500/20 text-red-300 flex items-center justify-center shrink-0">
+      <Bot size={42} />
+    </div>
+
+    <div className="flex-1">
+      <div className="flex items-center gap-3 mb-3">
+        <span className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-black tracking-[2px]">
+          AI ÖĞRENME ASİSTANI
+        </span>
+        <Sparkles className="text-red-400" size={18} />
+      </div>
+
+      <h2 className="text-3xl font-black mb-3">
+        Merhaba {homeData?.user?.name} 👋
+      </h2>
+
+      <p className="text-slate-300 font-semibold leading-relaxed mb-5">
+        {assistantMessage}
+      </p>
+
+      <div className="flex gap-3">
+        <input
+          value={assistantInput}
+          onChange={(e) => setAssistantInput(e.target.value)}
+          placeholder="Örn: Eğitimlerim, anketlerim, duyurular..."
+          className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder:text-slate-400 outline-none"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleAssistantNavigation();
+            }
+          }}
+        />
+
+        <button
+          onClick={() => handleAssistantNavigation()}
+          disabled={assistantLoading}
+          className="px-7 rounded-2xl bg-red-600 hover:bg-red-700 disabled:opacity-60 transition font-black"
+        >
+          {assistantLoading ? "..." : "Git"}
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-3 mt-5">
+        {[
+          "Eğitimlerim",
+          "Bekleyen anketim var mı?",
+          "Duyurular",
+          "Liderlik",
+        ].map((item) => (
+          <button
+            key={item}
+            onClick={() => {
+              setAssistantInput(item);
+              handleAssistantNavigation(item);
+            }}
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-sm font-bold"
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+</div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <StatCard
   icon={Medal}

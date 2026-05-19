@@ -37,6 +37,9 @@ export default function DersDetay({ user, setUser }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [rewindCount, setRewindCount] = useState(0);
   const [lastKnownTime, setLastKnownTime] = useState(0);
+  const watchedSecondsRef = useRef(0);
+const lastTickTimeRef = useRef(0);
+const forwardCountRef = useRef(0);
 
   const [modalType, setModalType] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -48,14 +51,32 @@ export default function DersDetay({ user, setUser }) {
   }, [id, moduleId, user?.id]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (videoRef.current) {
-        setLastKnownTime(videoRef.current.currentTime || 0);
-      }
-    }, 1000);
+  const timer = setInterval(() => {
+    const video = videoRef.current;
+    if (!video) return;
 
-    return () => clearInterval(timer);
-  }, []);
+    const current = video.currentTime || 0;
+    const previous = lastTickTimeRef.current || 0;
+    const diff = current - previous;
+
+    setLastKnownTime(current);
+
+    if (!video.paused && diff > 0 && diff <= 2) {
+      watchedSecondsRef.current += diff;
+    }
+    if (diff > 3) {
+  forwardCountRef.current += 1;
+}
+
+    if (diff < -2) {
+  setRewindCount((prev) => prev + 1);
+}
+
+    lastTickTimeRef.current = current;
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, []);
 
   const loadLesson = async () => {
     try {
@@ -105,19 +126,30 @@ export default function DersDetay({ user, setUser }) {
   };
 
   const saveVideoProgress = async () => {
-    try {
-      if (!lessonData?.kayitId || !module?.id) return;
-      await saveVideoLog({
-        kayitId: lessonData.kayitId,
-        icerikId: module.id,
-        izlenenSaniye: Math.floor(lastKnownTime || 0),
-        sonKaldigiSaniye: Math.floor(lastKnownTime || 0),
-        geriSarmaSayisi: rewindCount,
-      });
-    } catch (error) {
-      console.log("Video log kayıt hatası:", error.message);
-    }
-  };
+    const video = videoRef.current;
+
+const fallbackWatchedSeconds = video
+  ? Math.max(
+      watchedSecondsRef.current,
+      video.currentTime || 0,
+      video.duration && video.ended ? video.duration : 0
+    )
+  : watchedSecondsRef.current;
+  try {
+    if (!lessonData?.kayitId || !module?.id) return;
+
+    await saveVideoLog({
+      kayitId: lessonData.kayitId,
+      icerikId: module.id,
+      izlenenSaniye: Math.floor(fallbackWatchedSeconds || 0),
+      sonKaldigiSaniye: Math.floor(video?.currentTime || lastKnownTime || 0),
+      geriSarmaSayisi: rewindCount,
+      ileriSarmaSayisi: forwardCountRef.current,
+    });
+  } catch (error) {
+    console.log("Video log kayıt hatası:", error.message);
+  }
+};
 
   const handleFinishModule = async () => {
     if (!training || !module) return;
@@ -138,7 +170,8 @@ export default function DersDetay({ user, setUser }) {
         return;
       }
 
-      startQuiz();
+      alert("Video başarıyla izlendi. Şimdi quize geçebilirsiniz.");
+goToDetail();
     } catch (error) {
       alert(error.message || "Modül tamamlanamadı.");
     }
@@ -201,6 +234,7 @@ export default function DersDetay({ user, setUser }) {
   const rewindVideo = () => {
     if (!videoRef.current) return;
     videoRef.current.currentTime = Math.max(videoRef.current.currentTime - 10, 0);
+    lastTickTimeRef.current = videoRef.current.currentTime;
     setRewindCount((prev) => prev + 1);
   };
 
@@ -396,7 +430,10 @@ export default function DersDetay({ user, setUser }) {
                   src={module.videoUrl}
                   className="w-full aspect-video bg-black"
                   onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
+                  onPause={async () => {
+  setIsPlaying(false);
+  await saveVideoProgress();
+}}
                   onEnded={handleFinishModule}
                   controls
                 />
@@ -475,8 +512,8 @@ export default function DersDetay({ user, setUser }) {
                 className="w-full bg-red-600 py-4 rounded-2xl font-black text-white"
               >
                 {quizQuestions.length > 0 && isLastModule
-                  ? "Modülü Bitir ve Quiz'e Geç"
-                  : "Modülü Tamamla"}
+  ? "Modülü Bitir"
+  : "Modülü Tamamla"}
               </button>
               <button
                 onClick={goToDetail}

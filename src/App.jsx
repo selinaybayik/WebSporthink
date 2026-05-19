@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import LoginScreen from "./pages/LoginScreen";
@@ -101,6 +101,15 @@ function App() {
 
   return <Navigate to="/" />;
 };
+
+const [darkMode, setDarkMode] = useState(
+  localStorage.getItem("theme") === "dark"
+);
+
+useEffect(() => {
+  document.documentElement.classList.toggle("dark", darkMode);
+  localStorage.setItem("theme", darkMode ? "dark" : "light");
+}, [darkMode]);
 
   const renderUserPage = (PageComponent) => {
   if (!user) return <Navigate to="/" />;

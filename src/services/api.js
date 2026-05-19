@@ -165,10 +165,17 @@ export const getTrainingAnalytics = async (egitimId) => {
   } catch (error) { return null; }
 };
 
-export const getAllTrainings = async () => {
+export const getAllTrainings = async (userId, role, department) => {
   try {
-    const response = await fetch(`${BASE_URL}/api/egitimler`); 
+    const params = new URLSearchParams({
+      userId: String(userId || ""),
+      role: String(role || ""),
+      department: String(department || ""),
+    });
+
+    const response = await fetch(`${BASE_URL}/api/egitimler?${params.toString()}`);
     const data = await response.json();
+
     return data.map(item => ({
       ...item,
       id: item.egitim_id || item.id,
@@ -177,7 +184,9 @@ export const getAllTrainings = async () => {
       duration: item.sure || item.duration,
       xp: item.xp_degeri || item.xp
     }));
-  } catch (error) { return []; }
+  } catch (error) {
+    return [];
+  }
 };
 
 export const updateTrainingDescription = async (egitimId, aciklama) => {
@@ -267,10 +276,18 @@ export const addSurvey = async (surveyData) => {
 
 export const assignSurvey = async (assignData) => {
   const response = await fetch(`${BASE_URL}/api/admin/anket-ata`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(assignData),
   });
-  return await response.json();
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Anket atanamadı.");
+  }
+
+  return data;
 };
 
 export const getSurveyAssignments = async () => {
@@ -428,6 +445,7 @@ export const saveVideoLog = async ({
   izlenenSaniye,
   sonKaldigiSaniye,
   geriSarmaSayisi,
+  ileriSarmaSayisi,
 }) => {
   const response = await fetch(`${BASE_URL}/api/video-log`, {
     method: "POST",
@@ -440,6 +458,7 @@ export const saveVideoLog = async ({
       izlenenSaniye,
       sonKaldigiSaniye,
       geriSarmaSayisi,
+      ileriSarmaSayisi,
     }),
   });
 
@@ -839,14 +858,40 @@ export const getInstructorParticipantDetail = async (egitimId, userId) => {
 };
 
 // sendParticipantReminder — /api/egitmen/hatirlatma-gonder değil, /api/egitmen/katilimci/hatirlatma
-export const sendParticipantReminder = async ({ userId, egitimId, gonderenId }) => {
-  const response = await fetch(`${BASE_URL}/api/egitmen/katilimci/hatirlatma`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, egitimId, gonderenId }),
-  });
+export const sendParticipantReminder = async ({
+  userId,
+  egitimId,
+  gonderenId,
+  baslik,
+  mesaj,
+  tip,
+}) => {
+  const response = await fetch(
+    `${BASE_URL}/api/egitmen/katilimci/hatirlatma`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId,
+        egitimId,
+        gonderenId,
+        baslik,
+        mesaj,
+        tip,
+      }),
+    }
+  );
+
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || "Hatırlatma gönderilemedi.");
+
+  if (!response.ok) {
+    throw new Error(
+      data.message || "Hatırlatma gönderilemedi."
+    );
+  }
+
   return data;
 };
 // createInstructorTraining — /api/egitmen/egitim-ekle değil, /api/egitmen/egitim
@@ -1520,6 +1565,268 @@ export const createEducationQuestion = async ({
 
   if (!response.ok) {
     throw new Error(data.message || "Soru gönderilemedi.");
+  }
+
+  return data;
+};
+export const sendTrainingFeedback = async (data) => {
+  const response = await fetch(`${BASE_URL}/api/egitim-feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  return await response.json();
+};
+
+export const getAllFeedbacks = async () => {
+  const response = await fetch(`${BASE_URL}/api/admin/feedbackler`);
+  return await response.json();
+};
+export const getMyTrainingFeedback = async (egitimId, kullaniciId) => {
+  const response = await fetch(
+    `${BASE_URL}/api/egitim-feedback/${egitimId}/${kullaniciId}`
+  );
+  return await response.json();
+};
+export const getQuestionMessages = async (soruId) => {
+  const response = await fetch(`${BASE_URL}/api/soru-mesajlari/${soruId}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Mesajlar alınamadı.");
+  }
+
+  return data;
+};
+
+export const sendQuestionMessage = async ({
+  soruId,
+  gonderenId,
+  gonderenRol,
+  mesaj,
+}) => {
+  const response = await fetch(`${BASE_URL}/api/soru-mesajlari`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      soruId,
+      gonderenId,
+      gonderenRol,
+      mesaj,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Mesaj gönderilemedi.");
+  }
+
+  return data;
+};
+export const assignLearningPathToDepartment = async ({
+  yolId,
+  departman,
+  atayanId,
+}) => {
+  const response = await fetch(
+    `${BASE_URL}/api/admin/ogrenme-yolu-departmana-ata`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ yolId, departman, atayanId }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Öğrenme paketi atanamadı.");
+  }
+
+  return data;
+};
+export const getUserLearningPackages = async (userId) => {
+  const response = await fetch(`${BASE_URL}/api/kullanici/ogrenme-paketleri/${userId}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Öğrenme paketleri alınamadı.");
+  }
+
+  return data;
+};
+export const getUser360Tasks = async (userId) => {
+  const response = await fetch(`${BASE_URL}/api/user/360-gorevler/${userId}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "360 görevleri alınamadı.");
+  }
+
+  return data;
+};
+
+export const submit360Survey = async ({
+  userId,
+  atamaId,
+  anketId,
+  answers,
+}) => {
+  const response = await fetch(`${BASE_URL}/api/user/360-cevapla`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId,
+      atamaId,
+      anketId,
+      answers,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "360 değerlendirme gönderilemedi.");
+  }
+
+  return data;
+};
+export const get360Analysis = async (atamaId) => {
+  const response = await fetch(`${BASE_URL}/api/admin/360-analiz/${atamaId}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "360 analiz alınamadı.");
+  }
+
+  return data;
+};
+export const assignDepartmentSurvey = async (assignData) => {
+  const response = await fetch(`${BASE_URL}/api/dept/anket-ata`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(assignData),
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "Anket atanamadı.");
+  return data;
+};
+export const assignDepartment360Survey = async (assignData) => {
+  const response = await fetch(`${BASE_URL}/api/dept/360-ata`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(assignData),
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "360 atama yapılamadı.");
+  return data;
+};
+
+export const getDepartmentFeedbacks = async (departman) => {
+  const response = await fetch(
+    `${BASE_URL}/api/dept/geribildirimler/${encodeURIComponent(departman)}`
+  );
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "Geribildirim alınamadı.");
+  return data;
+};
+export const addDepartmentSurvey = async (surveyData) => {
+  const response = await fetch(`${BASE_URL}/api/dept/anket-ekle`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(surveyData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Departman anketi oluşturulamadı.");
+  }
+
+  return data;
+};
+export const getDepartmentSurveyAssignments = async (departman) => {
+  const response = await fetch(
+    `${BASE_URL}/api/dept/anket-atamalari/${encodeURIComponent(departman)}`
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Departman anket atamaları alınamadı.");
+  }
+
+  return data;
+};
+export const getDepartmentSurveyAnalysis = async (atamaId) => {
+  const response = await fetch(`${BASE_URL}/api/dept/anket-analiz/${atamaId}`);
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Anket analizi alınamadı.");
+  }
+
+  return data;
+};
+export const getDepartmentAnnouncements = async (departman, adminId) => {
+  const response = await fetch(
+    `${BASE_URL}/api/dept/duyurular/${encodeURIComponent(departman)}/${adminId}`
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Duyurular alınamadı.");
+  }
+
+  return data;
+};
+export const askNavigationAssistant = async ({ userId, message }) => {
+  const response = await fetch(`${BASE_URL}/api/user/navigation-assistant`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, message }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Asistan yanıt veremedi.");
+  }
+
+  return data;
+};
+export const getAiMiniQuiz = async ({
+  trainingTitle,
+  moduleTitle,
+  moduleContent,
+  progress,
+}) => {
+  const response = await fetch(`${BASE_URL}/api/ai-mini-quiz`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      trainingTitle,
+      moduleTitle,
+      moduleContent,
+      progress,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "AI mini quiz alınamadı.");
   }
 
   return data;
