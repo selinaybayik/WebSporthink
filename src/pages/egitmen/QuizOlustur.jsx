@@ -16,7 +16,8 @@ const DARK = "#081229";
 const MUTED = "#94A3B8";
 const BG = "#F8F9FA";
 
-const API_URL = "http://localhost:4000";
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function QuizOlustur() {
   const navigate = useNavigate();

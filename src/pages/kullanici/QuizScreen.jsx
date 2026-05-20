@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, Loader2, Trophy, Zap } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
-const BASE_URL = "http://10.151.120.92:4000";
+const BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function QuizScreen({ user, setUser }) {
   const navigate = useNavigate();

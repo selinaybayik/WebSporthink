@@ -17,7 +17,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import KullaniciLayout from "../../components/KullaniciLayout";
  
-const BASE_URL = "http://10.151.120.92:4000";
+import { getCertificates } from "../../services/api";
  
 export default function Sertifikalarim({ user, setUser }) {
   const navigate = useNavigate();
@@ -32,18 +32,17 @@ export default function Sertifikalarim({ user, setUser }) {
   }, [user?.id]);
  
   const fetchCertificates = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${BASE_URL}/api/sertifikalar/${user.id}`);
-      const data = await res.json();
-      setCertificates(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Sertifika hatası:", err);
-      setCertificates([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const data = await getCertificates(user.id);
+    setCertificates(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.error("Sertifika hatası:", err);
+    setCertificates([]);
+  } finally {
+    setLoading(false);
+  }
+};
  
   // YENİ:
 const filtered = certificates

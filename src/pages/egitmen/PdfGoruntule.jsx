@@ -6,7 +6,8 @@ const RED = "#E30613";
 const DARK = "#081229";
 const MUTED = "#94A3B8";
 
-const API_URL = "http://localhost:4000";
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function PdfViewer() {
   const navigate = useNavigate();

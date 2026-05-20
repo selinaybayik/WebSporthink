@@ -17,7 +17,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import EgitmenSidebar from "../../components/EgitmenSidebar";
 
-const BASE_URL = "http://10.151.120.92:4000";
+const BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function EgitmenSertifikalarim({ user }) {
   const navigate = useNavigate();

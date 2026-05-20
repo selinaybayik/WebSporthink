@@ -28,6 +28,8 @@ const RED = "#ED0015";
 const DARK = "#081229";
 const MUTED = "#64748B";
 const BG = "#F4F5F7";
+const BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function EgitmenAnaliz({ user }) {
   const location = useLocation();
@@ -44,6 +46,7 @@ export default function EgitmenAnaliz({ user }) {
   const [selectedEgitimId, setSelectedEgitimId] = useState(initialEgitimId);
   const [analysis, setAnalysis] = useState(location.state?.analysisData || null);
   const [loading, setLoading] = useState(false);
+  
 
   useEffect(() => {
     const loadTrainings = async () => {
@@ -239,9 +242,9 @@ export default function EgitmenAnaliz({ user }) {
                     disabled={!selectedEgitimId}
                     onClick={() =>
                       window.open(
-                        `http://localhost:4000/api/egitmen/egitim/${selectedEgitimId}/rapor/csv`,
-                        "_blank"
-                      )
+  `${BASE_URL}/api/egitmen/egitim/${selectedEgitimId}/rapor/csv`,
+  "_blank"
+)
                     }
                   >
                     <Table2 size={22} color="#059669" />

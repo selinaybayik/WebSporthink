@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createOdulTalep, getLiderlik, getOduller } from "../../services/api";
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function LiderlikTablosu({ user, setUser }) {
   const navigate = useNavigate();
@@ -362,8 +364,8 @@ function RozetlerSection({ user }) {
   const loadBadges = async () => {
     try {
       const res = await fetch(
-        `http://localhost:4000/api/user/public/${user.id}`
-      );
+  `${API_URL}/api/user/public/${user.id}`
+);
 
       const data = await res.json();
 

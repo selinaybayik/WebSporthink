@@ -31,7 +31,8 @@ export default function AnketCevapla({ user, setUser }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
-  const BASE_URL = "http://10.151.120.92:4000";
+  const BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:4000";
 
   useEffect(() => {
     loadSurvey();

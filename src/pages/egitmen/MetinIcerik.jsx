@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { getTextContent } from "../../services/api";
-const API_URL = "http://localhost:4000";
+
 
 export default function MetinIcerik() {
   const navigate = useNavigate();
