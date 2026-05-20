@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, BookOpen, Trophy, 
-  LogOut, Search, TrendingUp, Award,
+  LogOut,TrendingUp, Award,
   ChevronRight, Download, Plus, X,
   Coffee, Ticket, Map, Gift, CheckCircle, XCircle,
   Building2, Flame, Shield, Activity, ArrowLeft,
@@ -396,7 +396,11 @@ const handleUpdateAdminPassword = async (e) => {
     e.preventDefault();
     if (!selectedBulkTraining) return alert("Lütfen atanacak eğitimi seçin!");
     try {
-      const result = await assignTrainingToDepartment(bulkTargetDept, selectedBulkTraining);
+     const result = await assignTrainingToDepartment(
+  bulkTargetDept,
+  selectedBulkTraining,
+  user?.id
+);
       alert(result.message);
       setIsBulkAssignModalOpen(false); setSelectedBulkTraining(''); refreshData(); 
     } catch (err) { alert("Hata: " + err.message); }
@@ -409,7 +413,11 @@ const handleUpdateAdminPassword = async (e) => {
     e.preventDefault();
     if (!selectedMultiTraining) return alert("Lütfen atanacak eğitimi seçin!");
     try {
-      const result = await assignTrainingToMultipleUsers(safeSelectedUserIds, selectedMultiTraining);;
+      const result = await assignTrainingToMultipleUsers(
+  safeSelectedUserIds,
+  selectedMultiTraining,
+  user?.id
+);
       alert(result.message);
       setIsMultiAssignModalOpen(false); setSelectedMultiTraining(''); setSelectedUserIds([]); refreshData();
     } catch (err) { alert("Hata: " + err.message); }
@@ -960,10 +968,11 @@ const filteredAcademyTrainings = allTrainings.filter((training) => {
       {/* ANA İÇERİK */}
       <main className="flex-1 flex flex-col relative overflow-hidden">
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 z-10 shadow-sm">
-          <div className="relative w-1/3">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input type="text" placeholder="Sistem içinde ara..." className="w-full pl-12 pr-4 py-3 bg-slate-100 border-transparent rounded-2xl text-sm font-medium focus:bg-white focus:border-red-500 outline-none" />
-          </div>
+          <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-end px-10 z-10 shadow-sm">
+  <div className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg">
+    {user?.name?.charAt(0)}
+  </div>
+</header>
           <div className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg">{user?.name?.charAt(0)}</div>
         </header>
 
@@ -1211,10 +1220,7 @@ const filteredAcademyTrainings = allTrainings.filter((training) => {
                   
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                     <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
-                      <div className="relative w-72">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input type="text" placeholder="İsim veya departman ara..." value={personnelSearch} onChange={(e) => setPersonnelSearch(e.target.value)} className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none" />
-                      </div>
+                      
                       <span className="text-xs font-black text-slate-400 bg-slate-200 px-3 py-1.5 rounded-full uppercase tracking-widest">{filteredUsers.length} Sonuç</span>
                     </div>
                     <div className="overflow-x-auto">
@@ -3115,7 +3121,11 @@ const filteredAcademyTrainings = allTrainings.filter((training) => {
       if (egitim.is_assigned) {
         await removeTrainingFromUser(selectedPersonnel.id, egitim.id);
       } else {
-        await assignTrainingToUser(selectedPersonnel.id, egitim.id);
+        await assignTrainingToUser(
+  selectedPersonnel.id,
+  egitim.id,
+  user?.id
+);
       }
 
       setPersonnelTrainings(

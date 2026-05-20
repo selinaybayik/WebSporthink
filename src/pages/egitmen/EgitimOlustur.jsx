@@ -66,7 +66,7 @@ const [coverUploading, setCoverUploading] = useState(false);
         seviye_id:   getSeviyeId(),
         sure:        duration || "0 dk",
         xp_degeri:   Number(xp) || 0,
-        olusturan_id: user?.id,
+        olusturanId: user?.id,
         kapak_url: coverUrl,
       });
       return result?.egitim || result;

@@ -56,11 +56,13 @@ export const getUserTrainingStatus = async (userId) => {
   } catch (error) { return []; }
 };
 
-export const assignTrainingToUser = async (userId, egitimId) => {
+export const assignTrainingToUser = async (userId, egitimId, atayanId) => {
   const response = await fetch(`${BASE_URL}/api/admin/egitim-ata`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, egitimId }),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, egitimId, atayanId }),
   });
+
   return await response.json();
 };
 

@@ -39,6 +39,18 @@ import {
   assignTrainingToDepartment,
 } from "../../services/api";
 
+const getAssignmentLabel = (role, assignmentType) => {
+  if (assignmentType === "Kendi Seçti") return "Kendi Seçti";
+
+  const normalizedRole = String(role || "").toUpperCase();
+
+  if (normalizedRole === "EGITMEN") return "Eğitmen Önerdi";
+  if (normalizedRole === "IK_YONETICI") return "İK Yöneticisi Önerdi";
+  if (normalizedRole === "DEPT_YONETICI") return "Departman Yöneticisi Önerdi";
+
+  return "Yönetici Önerdi";
+};
+
 export default function Egitimlerim({ user, setUser }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,7 +111,7 @@ export default function Egitimlerim({ user, setUser }) {
         id: String(item.id),
         title: item.title || "İsimsiz Eğitim",
         category: item.category || "Genel",
-        assignmentType: item.assignment_type || "Yönetici Atadı",
+        assignmentType: item.assignment_type || "Bilinmiyor",
         progress:
   item.is_completed ||
   item.durum === "tamamlandi" ||
@@ -125,9 +137,20 @@ export default function Egitimlerim({ user, setUser }) {
   item.assignment_type === "Kendi Seçti"
     ? "discover"
     : "assigned",
-        instructor: item.instructor || "Sporthink Akademi",
-        assignedBy: item.atayan_kisi || item.assignedBy || "Sporthink Akademi",
-        assignedByRole: item.atayan_rol || item.assignedByRole || "Sistem",
+        creatorName: item.olusturan_kisi || "Oluşturan kişi bulunamadı",
+creatorRole: item.olusturan_rol || "",
+
+assignedBy:
+  item.atayan_kisi ||
+  item.assigned_by_name ||
+  item.assignedBy ||
+  null,
+
+assignedByRole:
+  item.atayan_rol ||
+  item.assigned_by_role ||
+  item.assignedByRole ||
+  null,
         durum: item.durum,
 
         isReassigned:
@@ -156,9 +179,11 @@ export default function Egitimlerim({ user, setUser }) {
           mandatory: false,
           isStarted: false,
           source: "discover",
-          instructor: item.instructor || "Sporthink Akademi",
-          assignedBy: item.atayan_kisi || item.assignedBy || "Sporthink Akademi",
-          assignedByRole: item.atayan_rol || item.assignedByRole || "Sistem",
+          creatorName: item.olusturan_kisi || "Oluşturan kişi bulunamadı",
+creatorRole: item.olusturan_rol || "",
+
+assignedBy: null,
+assignedByRole: null,
         }));
 
       setTrainings([...mappedMyTrainings, ...mappedCatalog]);
@@ -505,7 +530,7 @@ if (extraFilter === "Yeni") {
                       <th className="px-6 py-4">Eğitim Detayı</th>
                       <th className="px-6 py-4">Süre</th>
                       <th className="px-6 py-4">Ödül</th>
-                      <th className="px-6 py-4">Atayan</th>
+                      <th className="px-6 py-4">Eğitimi Oluşturan</th>
                       <th className="px-6 py-4">Tür</th>
                       <th className="px-6 py-4 text-right">İşlem</th>
                     </tr>
@@ -643,11 +668,11 @@ function TrainingRow({ item, user, onClick, onAssignDepartment }) {
           </div>
           <div>
             <p className="font-black text-slate-800 leading-tight">
-              {item.assignedBy || "Sporthink Akademi"}
-            </p>
-            <p className="text-[10px] font-black tracking-widest text-slate-400">
-              {item.assignedByRole || "ATAYAN"}
-            </p>
+  {item.creatorName || "Sporthink Akademi"}
+</p>
+<p className="text-[10px] font-black tracking-widest text-slate-400">
+  {String(item.creatorRole || "EĞİTİM OLUŞTURAN").toUpperCase()}
+</p>
           </div>
         </div>
       </td>
