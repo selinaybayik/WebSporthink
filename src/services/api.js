@@ -1,6 +1,7 @@
 // src/services/api.js
 
-const BASE_URL = 'http://localhost:4000'; // Web Backend Sunucusu
+const BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:4000"; // Web Backend Sunucusu
 
 export const loginUser = async (email, password) => {
   const response = await fetch(`${BASE_URL}/api/login`, {
