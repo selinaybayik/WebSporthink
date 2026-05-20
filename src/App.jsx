@@ -50,7 +50,7 @@ import EgitimOnizleme from "./pages/egitmen/EgitimOnizleme";
 import EgitmenAsistan from "./pages/egitmen/EgitmenAsistan";
 import EgitmenSorular from "./pages/egitmen/EgitmenSorular";
 import EgitmenSoruDetay from "./pages/egitmen/EgitmenSoruDetay";
-import AiStudyo from "./pages/egitmen/AiStudyo";
+import AiStudyo from "./pages/egitmen/AIStudyo";
 import EgitmenBildirimler from "./pages/egitmen/EgitmenBildirimler";
 import EgitmenProfil from "./pages/egitmen/EgitmenProfil";
 import EgitmenYetkinlikleri from "./pages/egitmen/EgitmenYetkinlikleri";
